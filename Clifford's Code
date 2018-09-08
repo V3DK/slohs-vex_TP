@@ -1,4 +1,5 @@
 #pragma config(Sensor, in1,    gyro,           sensorGyro)
+#pragma config(Sensor, in2,    power,          sensorAnalog)
 #pragma config(Sensor, dgtl1,  rightDrive,     sensorQuadEncoder)
 #pragma config(Sensor, dgtl3,  leftDrive,      sensorQuadEncoder)
 #pragma config(Sensor, dgtl5,  liftE,          sensorQuadEncoder)
@@ -31,76 +32,67 @@
 
 
 //Variables for Toggle on Controllers
-int wristToggleState = 0;
-int wristButtonPressed = 0;
+
+
+
+bool wristPressed = false;
 bool wristStatus = false;
 //deafult false cause flip out mech starts it there
 //wristStatus is false when wrist is on the left position; it is able to turn the cap right, or clockwise
 //wristStatus is true when wrist is on right position; it is able to turn the cap left, or counter-clockwise
 //direction of clockwise/counter is taken from perspective of wrist motor
 
-int rollerToggleState = 0;
-int rollerButtonPressed = 0;
-bool rollerOn = false;
-
 //Other Variables
 bool autoPos = false;
 int autonNum = 10;
 
 
-/*
 void wristToggleMovement(bool e){
 	int wristToggleTime = 500;
-//if e is false, need to turn right
-//if e is true, need to turn left
-	if(!e){
-		motor[wrist] = 30;
-		wait1Msec(wristToggleTime);
-		motor[wrist] = 0;
+	int margin = 0.15 * wristToggleTime;
+	int temp = 0;
+	if(!e)
+		temp = 1;
+	else
+		temp = -1;
+	//if e is false, need to turn right
+	//if e is true, need to turn left
+	clearTimer(T2);
+	int motorVal = 60 * temp;
+	motor[wrist] = motorVal;
+	while(time1[T2] < wristToggleTime){
+		if(time1[T2] > (wristToggleTime - margin)){
+			//start slowing motor power so it doesn't hit with big momentum
+			if((wristToggleTime - time1[T2]) < (margin / 4)){
+				motor[wrist] = 10 * temp;
+			}
+			else if((wristToggleTime - time1[T2]) < (margin / 2)){
+				motor[wrist] = motorVal / 2; //half of start value
+			}
+		}
 	}
-	else {
-		motor[wrist] = -30;
-		wait1Msec(wristToggleTime);
-		motor[wrist] = 0;
+	motor[wrist] = 7 * temp;
 
-	}
+	//end stuff to reset and updating stuff
+	wristPressed = false;
 
 	//now that the wrist has moved, we can update it's position by inversing the boolean
 	wristStatus = !wristStatus;
-
-
 }
 
 task wristToggleTask(){
-//toggle the wrist
+	//toggle the wrist
 	while(true){
-		if(wristToggleState == 1){
-            //code to run for moving wrist
-            //passes true or false based on position or wrist - corresponds to wristToggleMovement method of moving
-            //wristToggleMovement(wristStatus);
-            motor[wrist] = 10;
-			wait1Msec(200);
-			motor[wrist] = 0;
+		if(wristPressed){
+			//code to run for moving wrist
+			wristToggleMovement(wristStatus);
+			//run wrist function goes here^
 		}
-        wait1Msec(15);
-	}
-}
-
-task rollerToggleTask(){
-	/*while(true){
-		if(!rollerOn){
-			motor[roller] = 127;
-		}
-		else if(rollerOn){
-			motor[roller] = 0;
-		}
-
 		wait1Msec(15);
 	}
-	
-
 }
-*/
+
+
 /*---------------------------------------------------------------------------*/
 /*                          Pre-Autonomous Functions                         */
 /*                                                                           */
@@ -135,21 +127,21 @@ void waitForRelease()
 {
 	while(nLCDButtons != 0){
 		wait1Msec(5);
-	
+
 	}
 }
-	
+
 
 void pre_auton()
 {
 	clearAll();
-  // Set bStopTasksBetweenModes to false if you want to keep user created tasks
-  // running between Autonomous and Driver controlled modes. You will need to
-  // manage all user created tasks if set to false.
-  bStopTasksBetweenModes = true;
-  bDisplayCompetitionStatusOnLcd = false;
+	// Set bStopTasksBetweenModes to false if you want to keep user created tasks
+	// running between Autonomous and Driver controlled modes. You will need to
+	// manage all user created tasks if set to false.
+	bStopTasksBetweenModes = true;
+	bDisplayCompetitionStatusOnLcd = false;
 
-  	const short leftButton = 1;
+	const short leftButton = 1;
 	const short centerButton = 2;
 	const short rightButton = 4;
 	clearLCDLine(0);
@@ -174,7 +166,7 @@ void pre_auton()
 			autoPos = true;
 			displayLCDCenteredString(0, "Clicked");
 		}
-		 wait1Msec( 15 );
+		wait1Msec( 15 );
 	}
 	if(autoPos){
 		while(nLCDButtons != centerButton){
@@ -261,7 +253,7 @@ void pre_auton()
 				break;
 			}	//switch
 
-			 wait1Msec(15);
+			wait1Msec(15);
 		}	//while loop
 	}	//if
 
@@ -281,15 +273,15 @@ void pre_auton()
 /*---------------------------------------------------------------------------*/
 
 int avgDrive(){
-return (SensorValue[leftDrive] + SensorValue[rightDrive]) / 2.0;	
+	return (SensorValue[leftDrive] + SensorValue[rightDrive]) / 2.0;
 }
 
 void stopDrive(){
 	motor[backLeft] = 0;
 	motor[middleLeft] = 0;
 	motor[frontLeft] = 0;
-	
-		motor[backRight] = 0;
+
+	motor[backRight] = 0;
 	motor[middleRight] = 0;
 	motor[frontRight] = 0;
 }
@@ -299,25 +291,25 @@ void driveFwd(int left, int right, int count){
 	motor[backLeft] = left;
 	motor[middleLeft] = left;
 	motor[frontLeft] = left;
-		motor[backRight] = right;
+	motor[backRight] = right;
 	motor[middleRight] = right;
 	motor[frontRight] = right;
-	
+
 	if(count>0){
-	while(avgDrive() < count){
-		
+		while(avgDrive() < count){
+
 		}
-	stopDrive();
-}
+		stopDrive();
+	}
 	else {
 		while(avgDrive() > count){
-			
+
 		}
-	stopDrive();
+		stopDrive();
 	}
 	stopDrive();
 	clearDrive();
-	
+
 }
 
 //use with gyro n stuff
@@ -325,7 +317,7 @@ void driveMove(int left, int right){
 	motor[backLeft] = left;
 	motor[middleLeft] = left;
 	motor[frontLeft] = left;
-		motor[backRight] = right;
+	motor[backRight] = right;
 	motor[middleRight] = right;
 	motor[frontRight] = right;
 }
@@ -339,7 +331,7 @@ void rightParking(){
 	while(SensorValue[gyro] > -750){	
 	}
 	stopDrive();
-	
+
 	driveFwd(-127, -127, -1400);
 	wait1Msec(15000);
 }
@@ -351,7 +343,7 @@ void leftParking(){
 	while(SensorValue[gyro] < 750){	
 	}
 	stopDrive();
-	
+
 	driveFwd(-127, -127, -1400);
 	wait1Msec(15000);
 }
@@ -389,7 +381,7 @@ void blueFlagParking(){
 
 task autonomous()
 {
-  //LCD STUFF code
+	//LCD STUFF code
 	//clear timer for auton while's
 	clearTimer(T2);
 	clearLCDLine(0);
@@ -405,22 +397,22 @@ task autonomous()
 		leftParking();
 	case 2:
 		displayLCDCenteredString(0, "RedFlagParking");
-	//	point10RGyro(true);
+		//	point10RGyro(true);
 		redFlagParking();
 	case 3:
 		displayLCDCenteredString(0, "BlueFlagParking");
-	//	point10LGyro(true);
+		//	point10LGyro(true);
 		blueFlagParking();
 	case 4:
 		displayLCDCenteredString(0, "Other");
-	//	point5RGyro(true);
+		//	point5RGyro(true);
 	case 5:
 		displayLCDCenteredString(0, "Other");
-	//	point5LGyro(true);
+		//	point5LGyro(true);
 	default:
 		displayLCDCenteredString(0, "No Auton Selected!");
 		break;
-		
+
 	}
 
 }
@@ -430,7 +422,7 @@ void driveTrain(){
 	motor[frontLeft] = vexRT[Ch3];
 	motor[middleLeft] = vexRT[Ch3];
 	motor[backLeft] = vexRT[Ch3];
-	
+
 	motor[frontRight] = vexRT[Ch2];
 	motor[middleRight] = vexRT[Ch2];
 	motor[backRight] = vexRT[Ch2];
@@ -472,58 +464,20 @@ void puncherMove(){
 	}
 }
 
-/*
+
 void wristToggleCheck(){
 	while(true) {
-        // check for a button press only if we are not already pressed.
-        if( vexRT[ Btn8RXmtr2 ] == 1 )
-            {
-            if(!wristButtonPressed)
-              {
-              // change the toggle state
-              wristToggleState = 1 - wristToggleState;
-
-              // Note the button is pressed
-              wristButtonPressed = 1;
-
-              }
-            }
-        else
-            {
-            // the button is not pressed
-            wristButtonPressed = 0;
-            }
-
-
-
-        wait1Msec(15);
+		// check for a button press only if we are not already pressed.
+		if(vexRT[Btn8RXmtr2] == 1)
+		{
+			if(!wristPressed){
+				waitUntil(vexRT[Btn8RXmtr2] == 0);
+				wristPressed = true;
+			}
+		}
+		wait1Msec(10);
+	}
 }
-}
-
-void rollerToggleCheck(){
-	while(true) {
-        // check for a button press only if we are not already pressed.
-        if( vexRT[Btn5U] == 1 )
-            {
-            if(!rollerButtonPressed)
-              {
-              // change the toggle state
-              rollerToggleState = 1 - rollerToggleState;
-              // Note the button is pressed
-              rollerButtonPressed = 1;
-
-              }
-            }
-        else
-            {
-            // the button is not pressed
-            rollerButtonPressed = 0;
-            }
-        wait1Msec(15);
-}
-	
-}
-*/
 
 
 
@@ -536,23 +490,18 @@ void regularRemote(){
 	rollerMove();
 	wristMove();
 	//toggles and special stuff
-////	wristToggleCheck();
-//	rollerToggleCheck();
+	wristToggleCheck();
+
 
 }
-
-
-
-
 task usercontrol()
 {
 	//wristToggle Tastk
-	//startTask(wristToggleTask);
-	//startTask(rollerToggleTask);
- 
-  while (true)
-  {
-clearAll();
+	startTask(wristToggleTask);
+	clearAll();
+	string mainBattery;
+	string expanderBattery;
+
 	while (true) {
 		//Main Controls for Everything
 		regularRemote();
@@ -563,26 +512,35 @@ clearAll();
 
 			displayLCDString(0, 0, "G ");
 			displayLCDNumber(0, 2, SensorValue[gyro]);
-			
+
 			displayLCDString(0, 7, "RD ");
 			displayLCDNumber(0, 10, SensorValue[rightDrive]);
 
 			displayLCDString(1, 0, "LD ");
 			displayLCDNumber(1, 3, SensorValue[leftDrive]);
-			
-			
+
+
 			displayLCDString(1, 7, "L ");
 			displayLCDNumber(1, 9, SensorValue[lift]);
 		}
-		else {
+		else if (1==1){
 			displayLCDCenteredString(0, "User");
 			displayLCDCenteredString(1, "Control");
-
 		}
-  }
+		else {
+			// declare some string variables to hold the formatted information
 
-   wait1Msec(25);
-   
- }
- 
+			sprintf(mainBattery," %f Volts",(float)nImmediateBatteryLevel/1000.0);
+			sprintf(expanderBattery," %f Volts",(float)SensorValue[power]/270.0);
+			clearLCDLine(0);
+			clearLCDLine(1);
+			displayLCDString(0,0,mainBattery);
+			displayLCDString(1,0,expanderBattery);
+			// wait 1 second before reading the volts again. Just because.
+			wait1Msec(1000);
+		}
+	}
+
+	wait1Msec(15);
+
 }
