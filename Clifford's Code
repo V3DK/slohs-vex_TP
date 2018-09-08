@@ -48,8 +48,8 @@ int autonNum = 10;
 
 
 void wristToggleMovement(bool e){
-	int wristToggleTime = 500;
-	int margin = 0.15 * wristToggleTime;
+	int wristToggleTime = 420;
+	int margin = 0.2 * wristToggleTime;
 	int temp = 0;
 	if(!e)
 		temp = 1;
@@ -79,20 +79,16 @@ void wristToggleMovement(bool e){
 	//now that the wrist has moved, we can update it's position by inversing the boolean
 	wristStatus = !wristStatus;
 }
-
+/*
 task wristToggleTask(){
 	//toggle the wrist
 	while(true){
-		if(wristPressed){
-			//code to run for moving wrist
-			wristToggleMovement(wristStatus);
-			//run wrist function goes here^
-		}
+
 		wait1Msec(15);
 	}
 }
 
-
+*/
 /*---------------------------------------------------------------------------*/
 /*                          Pre-Autonomous Functions                         */
 /*                                                                           */
@@ -437,13 +433,16 @@ void rollerMove(){
 	}
 }
 void wristMove(){
+	/*
 	if(vexRT[Btn8UXmtr2] == 1) {
 		motor[wrist] = -40;
 		} else if(vexRT[Btn8DXmtr2] == 1) {
 		motor[wrist] = 40;
 		} else {
 		motor[wrist] = 0;
-	}
+	
+	
+		}	*/
 }
 void mainLift(){
 	if(vexRT[Btn6DXmtr2] == 1) {
@@ -466,7 +465,6 @@ void puncherMove(){
 
 
 void wristToggleCheck(){
-	while(true) {
 		// check for a button press only if we are not already pressed.
 		if(vexRT[Btn8RXmtr2] == 1)
 		{
@@ -475,8 +473,7 @@ void wristToggleCheck(){
 				wristPressed = true;
 			}
 		}
-		wait1Msec(10);
-	}
+		
 }
 
 
@@ -497,7 +494,7 @@ void regularRemote(){
 task usercontrol()
 {
 	//wristToggle Tastk
-	startTask(wristToggleTask);
+
 	clearAll();
 	string mainBattery;
 	string expanderBattery;
@@ -507,6 +504,12 @@ task usercontrol()
 		regularRemote();
 		clearLCDLine(0);
 		clearLCDLine(1);
+		
+				if(wristPressed){
+			//code to run for moving wrist
+			wristToggleMovement(wristStatus);
+			//run wrist function goes here^
+		}
 
 		if(true){
 
