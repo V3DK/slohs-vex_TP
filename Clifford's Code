@@ -29,6 +29,78 @@
 //Main competition background code...do not modify!
 #include "Vex_Competition_Includes.c"
 
+
+//Variables for Toggle on Controllers
+int wristToggleState = 0;
+int wristButtonPressed = 0;
+bool wristStatus = false;
+//deafult false cause flip out mech starts it there
+//wristStatus is false when wrist is on the left position; it is able to turn the cap right, or clockwise
+//wristStatus is true when wrist is on right position; it is able to turn the cap left, or counter-clockwise
+//direction of clockwise/counter is taken from perspective of wrist motor
+
+int rollerToggleState = 0;
+int rollerButtonPressed = 0;
+bool rollerOn = false;
+
+//Other Variables
+bool autoPos = false;
+int autonNum = 10;
+
+
+/*
+void wristToggleMovement(bool e){
+	int wristToggleTime = 500;
+//if e is false, need to turn right
+//if e is true, need to turn left
+	if(!e){
+		motor[wrist] = 30;
+		wait1Msec(wristToggleTime);
+		motor[wrist] = 0;
+	}
+	else {
+		motor[wrist] = -30;
+		wait1Msec(wristToggleTime);
+		motor[wrist] = 0;
+
+	}
+
+	//now that the wrist has moved, we can update it's position by inversing the boolean
+	wristStatus = !wristStatus;
+
+
+}
+
+task wristToggleTask(){
+//toggle the wrist
+	while(true){
+		if(wristToggleState == 1){
+            //code to run for moving wrist
+            //passes true or false based on position or wrist - corresponds to wristToggleMovement method of moving
+            //wristToggleMovement(wristStatus);
+            motor[wrist] = 10;
+			wait1Msec(200);
+			motor[wrist] = 0;
+		}
+        wait1Msec(15);
+	}
+}
+
+task rollerToggleTask(){
+	/*while(true){
+		if(!rollerOn){
+			motor[roller] = 127;
+		}
+		else if(rollerOn){
+			motor[roller] = 0;
+		}
+
+		wait1Msec(15);
+	}
+	
+
+}
+*/
 /*---------------------------------------------------------------------------*/
 /*                          Pre-Autonomous Functions                         */
 /*                                                                           */
@@ -39,20 +111,163 @@
 /*  not every time that the robot is disabled.                               */
 /*---------------------------------------------------------------------------*/
 
+
+void clearDrive(){
+	SensorValue[leftDrive] = 0;
+	SensorValue[rightDrive] = 0;
+}
+
+void clearOthers(){
+	SensorValue[liftE] = 0;
+}
+
+void clearAll(){
+	clearDrive();
+	clearOthers();
+}
+
+void waitForPress()
+{
+	while(nLCDButtons == 0){}
+	wait1Msec(5);
+}
+void waitForRelease()
+{
+	while(nLCDButtons != 0){
+		wait1Msec(5);
+	
+	}
+}
+	
+
 void pre_auton()
 {
+	clearAll();
   // Set bStopTasksBetweenModes to false if you want to keep user created tasks
   // running between Autonomous and Driver controlled modes. You will need to
   // manage all user created tasks if set to false.
   bStopTasksBetweenModes = true;
+  bDisplayCompetitionStatusOnLcd = false;
 
-	// Set bDisplayCompetitionStatusOnLcd to false if you don't want the LCD
-	// used by the competition include file, for example, you might want
-	// to display your team name on the LCD in this function.
-	// bDisplayCompetitionStatusOnLcd = false;
+  	const short leftButton = 1;
+	const short centerButton = 2;
+	const short rightButton = 4;
+	clearLCDLine(0);
+	clearLCDLine(1);
+	bLCDBacklight = true;
+	/* Gyro Setup */
+	SensorType[gyro] = sensorNone;
+	wait1Msec(50);
+	SensorType[gyro] = sensorGyro;
+	displayLCDCenteredString(0, "Calibrating");
+	displayLCDCenteredString(1, "Gyro");
+	//wait for it to calibrate
+	wait1Msec(2000);
+	SensorFullCount[gyro] = 3000;
+	clearLCDLine(0);
+	clearLCDLine(1);
+	clearTimer(T1);
+	autonNum = 2;
+	while(time1[T1] < 1000) {
+		displayLCDNumber(1, 0, time1[T1], 5);
+		if(nLCDButtons == centerButton) {
+			autoPos = true;
+			displayLCDCenteredString(0, "Clicked");
+		}
+		 wait1Msec( 15 );
+	}
+	if(autoPos){
+		while(nLCDButtons != centerButton){
+			switch(autonNum){
+			case 0:
+				displayLCDCenteredString(0, "Right Parking");
+				displayLCDCenteredString(1, "<     Enter    >");
+				waitForPress();
+				if(nLCDButtons == leftButton){
+					waitForRelease();
+					autonNum = 5;
+				}
+				else if(nLCDButtons == rightButton){
+					waitForRelease();
+					autonNum++;
+				}
+				break;
+			case 1:
+				displayLCDCenteredString(0, "Left Parking");
+				displayLCDCenteredString(1, "<     Enter    >");
+				waitForPress();
+				if(nLCDButtons == leftButton){
+					waitForRelease();
+					autonNum--;
+				}
+				else if(nLCDButtons == rightButton){
+					waitForRelease();
+					autonNum++;
+				}
+				break;
+			case 2:
+				displayLCDCenteredString(0, "redFlagPark");
+				displayLCDCenteredString(1, "<     Enter    >");
+				waitForPress();
+				if(nLCDButtons == leftButton){
+					waitForRelease();
+					autonNum--;
+				}
+				else if(nLCDButtons == rightButton){
+					waitForRelease();
+					autonNum++;
+				}
+				break;
+			case 3:
+				displayLCDCenteredString(0, "blueFlagPark");
+				displayLCDCenteredString(1, "<     Enter    >");
+				waitForPress();
+				if(nLCDButtons == leftButton){
+					waitForRelease();
+					autonNum--;
+				}
+				else if(nLCDButtons == rightButton){
+					waitForRelease();
+					autonNum++;
+				}
+				break;
+			case 4:
+				displayLCDCenteredString(0, "Some Auton");
+				displayLCDCenteredString(1, "<     Enter    >");
+				waitForPress();
+				if(nLCDButtons == leftButton){
+					waitForRelease();
+					autonNum--;
+				}
+				else if(nLCDButtons == rightButton){
+					waitForRelease();
+					autonNum++;
+				}
+				break;
+			case 5:
+				displayLCDCenteredString(0, "Some Auton");
+				displayLCDCenteredString(1, "<     Enter    >");
+				waitForPress();
+				if(nLCDButtons == leftButton){
+					waitForRelease();
+					autonNum--;
+				}
+				else if(nLCDButtons == rightButton){
+					waitForRelease();
+					autonNum = 0;
+				}
+				break;
+			default:
+				break;
+			}	//switch
 
-  // All activities that occur before the competition starts
-  // Example: clearing encoders, setting servo positions, ...
+			 wait1Msec(15);
+		}	//while loop
+	}	//if
+
+	displayLCDCenteredString(0,"Auton Selected");
+	clearLCDLine(1);
+
 }
 
 /*---------------------------------------------------------------------------*/
@@ -65,20 +280,152 @@ void pre_auton()
 /*  You must modify the code to add your own robot specific commands here.   */
 /*---------------------------------------------------------------------------*/
 
-task autonomous()
-{
-  
+int avgDrive(){
+return (SensorValue[leftDrive] + SensorValue[rightDrive]) / 2.0;	
 }
 
-/*---------------------------------------------------------------------------*/
-/*                                                                           */
-/*                              User Control Task                            */
-/*                                                                           */
-/*  This task is used to control your robot during the user control phase of */
-/*  a VEX Competition.                                                       */
-/*                                                                           */
-/*  You must modify the code to add your own robot specific commands here.   */
-/*---------------------------------------------------------------------------*/
+void stopDrive(){
+	motor[backLeft] = 0;
+	motor[middleLeft] = 0;
+	motor[frontLeft] = 0;
+	
+		motor[backRight] = 0;
+	motor[middleRight] = 0;
+	motor[frontRight] = 0;
+}
+
+
+void driveFwd(int left, int right, int count){
+	motor[backLeft] = left;
+	motor[middleLeft] = left;
+	motor[frontLeft] = left;
+		motor[backRight] = right;
+	motor[middleRight] = right;
+	motor[frontRight] = right;
+	
+	if(count>0){
+	while(avgDrive() < count){
+		
+		}
+	stopDrive();
+}
+	else {
+		while(avgDrive() > count){
+			
+		}
+	stopDrive();
+	}
+	stopDrive();
+	clearDrive();
+	
+}
+
+//use with gyro n stuff
+void driveMove(int left, int right){
+	motor[backLeft] = left;
+	motor[middleLeft] = left;
+	motor[frontLeft] = left;
+		motor[backRight] = right;
+	motor[middleRight] = right;
+	motor[frontRight] = right;
+}
+
+
+void rightParking(){
+	clearAll();
+	driveFwd(-80, -80, -330);
+	wait1Msec(200);
+	driveMove(80, -80);
+	while(SensorValue[gyro] > -750){	
+	}
+	stopDrive();
+	
+	driveFwd(-127, -127, -1400);
+	wait1Msec(15000);
+}
+void leftParking(){
+	clearAll();
+	driveFwd(-80, -80, -330);
+	wait1Msec(200);
+	driveMove(-80, 80);
+	while(SensorValue[gyro] < 750){	
+	}
+	stopDrive();
+	
+	driveFwd(-127, -127, -1400);
+	wait1Msec(15000);
+}
+
+void redFlagParking(){
+	clearAll();
+	driveFwd(-80, -80, -1000);
+	wait1Msec(800);
+	driveFwd(80, 80, 1480);
+	wait1Msec(300);
+	driveMove(80, -80);
+	while(SensorValue[gyro] > -600){	
+	}
+	stopDrive();
+	wait1Msec(300);
+	driveFwd(-127, -127, -1400);
+	wait1Msec(15000);
+}
+
+void blueFlagParking(){
+	clearAll();
+	driveFwd(-80, -80, -1000);
+	wait1Msec(800);
+	driveFwd(80, 80, 1480);
+	wait1Msec(300);
+	driveMove(-80, 80);
+	while(SensorValue[gyro] < 600){	
+	}
+	stopDrive();
+	wait1Msec(300);
+	driveFwd(-127, -127, -1400);
+	wait1Msec(15000);
+}
+
+
+task autonomous()
+{
+  //LCD STUFF code
+	//clear timer for auton while's
+	clearTimer(T2);
+	clearLCDLine(0);
+	clearLCDLine(1);
+	switch (autonNum){
+	case 0:
+		displayLCDCenteredString(0, "RightParking");
+		rightParking();
+		//default for NOW
+		//redFlagParking();
+	case 1:
+		displayLCDCenteredString(0, "LeftParking");
+		leftParking();
+	case 2:
+		displayLCDCenteredString(0, "RedFlagParking");
+	//	point10RGyro(true);
+		redFlagParking();
+	case 3:
+		displayLCDCenteredString(0, "BlueFlagParking");
+	//	point10LGyro(true);
+		blueFlagParking();
+	case 4:
+		displayLCDCenteredString(0, "Other");
+	//	point5RGyro(true);
+	case 5:
+		displayLCDCenteredString(0, "Other");
+	//	point5LGyro(true);
+	default:
+		displayLCDCenteredString(0, "No Auton Selected!");
+		break;
+		
+	}
+
+}
+
+
 void driveTrain(){
 	motor[frontLeft] = vexRT[Ch3];
 	motor[middleLeft] = vexRT[Ch3];
@@ -125,26 +472,73 @@ void puncherMove(){
 	}
 }
 
-void clearDrive(){
-	SensorValue[leftDrive] = 0;
-	SensorValue[rightDrive] = 0;
+/*
+void wristToggleCheck(){
+	while(true) {
+        // check for a button press only if we are not already pressed.
+        if( vexRT[ Btn8RXmtr2 ] == 1 )
+            {
+            if(!wristButtonPressed)
+              {
+              // change the toggle state
+              wristToggleState = 1 - wristToggleState;
+
+              // Note the button is pressed
+              wristButtonPressed = 1;
+
+              }
+            }
+        else
+            {
+            // the button is not pressed
+            wristButtonPressed = 0;
+            }
+
+
+
+        wait1Msec(15);
+}
 }
 
-void clearOthers(){
-	SensorValue[liftE] = 0;
-}
+void rollerToggleCheck(){
+	while(true) {
+        // check for a button press only if we are not already pressed.
+        if( vexRT[Btn5U] == 1 )
+            {
+            if(!rollerButtonPressed)
+              {
+              // change the toggle state
+              rollerToggleState = 1 - rollerToggleState;
+              // Note the button is pressed
+              rollerButtonPressed = 1;
 
-void clearAll(){
-	clearDrive();
-	clearOthers();
+              }
+            }
+        else
+            {
+            // the button is not pressed
+            rollerButtonPressed = 0;
+            }
+        wait1Msec(15);
 }
+	
+}
+*/
+
+
 
 void regularRemote(){
+	//regular button pressing
 	driveTrain();
-	rollerMove();
-	wristMove();
 	mainLift();
 	puncherMove();
+
+	rollerMove();
+	wristMove();
+	//toggles and special stuff
+////	wristToggleCheck();
+//	rollerToggleCheck();
+
 }
 
 
@@ -152,6 +546,9 @@ void regularRemote(){
 
 task usercontrol()
 {
+	//wristToggle Tastk
+	//startTask(wristToggleTask);
+	//startTask(rollerToggleTask);
  
   while (true)
   {
@@ -183,5 +580,9 @@ clearAll();
 
 		}
   }
-}
+
+   wait1Msec(25);
+   
+ }
+ 
 }
