@@ -905,12 +905,12 @@ task wristM(){
 void displayBattery(){
 	//Display the Primary Robot battery voltage
 	//displayLCDString(0, 0, "Primary: ");
-	sprintf(mainBattery, "%1.2f%c", nImmediateBatteryLevel/974.0,'V'); //Build the value to be displayed
+	sprintf(mainBattery, "%1.2f%c", nImmediateBatteryLevel / 1000.0,'V'); //Build the value to be displayed
 	displayNextLCDString(mainBattery);
 
 	//Display the Backup battery voltage
 	//displayLCDString(1, 0, "Backup: ");
-	sprintf(backupBattery, "%1.2f%c", BackupBatteryLevel/1000.0, 'V');    //Build the value to be displayed
+	sprintf(backupBattery, "%1.2f%c", SensorValue[power] / 70.8, 'V');    //Build the value to be displayed
 	displayNextLCDString(backupBattery);
 	
 	wait1Msec(1000);
