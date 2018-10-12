@@ -38,8 +38,6 @@ string mainBattery, backupBattery;
 
 //Variables for Toggle on Controllers
 
-
-
 bool wristPressed = false;
 bool wristStatus = false;
 bool fourBarBool = false;
@@ -52,17 +50,32 @@ bool fourBarBool = false;
 bool autoPos = false;
 int autonNum = 10;
 
-/*---------------------------------------------------------------------------*/
-/*                          Pre-Autonomous Functions                         */
-/*                                                                           */
-/*  You may want to perform some actions before the competition starts.      */
-/*  Do them in the following function.  You must return from this function   */
-/*  or the autonomous and usercontrol tasks will not be started.  This       */
-/*  function is only called once after the cortex has been powered on and    */
-/*  not every time that the robot is disabled.                               */
-/*---------------------------------------------------------------------------*/
 
+/*PID*/
+/*
+#define PID_SENSOR_INDEX    myEncoder
+#define PID_SENSOR_SCALE    1
 
+#define PID_MOTOR_INDEX     myMotor
+#define PID_MOTOR_SCALE     -1
+*/
+#define PID_DRIVE_MAX       127
+#define PID_DRIVE_MIN     (-127)
+
+#define PID_INTEGRAL_LIMIT  50
+
+// These could be constants but leaving
+// as variables allows them to be modified in the debugger "live"
+float  pid_Kp = 2.0;
+float  pid_Ki = 0.04;
+float  pid_Kd = 0.0;
+
+static bool  pidRunning = true;
+static float pidTarget;
+
+int avgDrive(){
+	return (SensorValue[leftDrive] + SensorValue[rightDrive]) / 2.0;
+}
 void clearDrive(){
 	SensorValue[leftDrive] = 0;
 	SensorValue[rightDrive] = 0;
@@ -76,6 +89,84 @@ void clearAll(){
 	clearDrive();
 	clearOthers();
 }
+task pidController()
+{
+    float  pidSensorCurrent;
+
+    float  pidError;
+    float  pidLastError;
+    float  pidIntegral;
+    float  pidDerivative;
+    float  pidDrive;
+
+    // If we are using an encoder then clear it
+    clearDrive();
+
+    // Init the variables
+    pidLastError  = 0;
+    pidIntegral   = 0;
+
+    while(true)
+        {
+        // Is PID control active?
+        if(pidRunning)
+            {
+            // Read the sensor value and scale
+            pidSensorCurrent = avgDrive();
+
+            // calculate error
+            pidError = pidTarget - pidSensorCurrent;
+
+            // integral - if Ki is not 0
+            if(pid_Ki != 0)
+                {
+                // If we are inside controlable window then integrate the error
+                if(abs(pidError) < PID_INTEGRAL_LIMIT)
+                    pidIntegral = pidIntegral + pidError;
+                else
+                    pidIntegral = 0;
+                }
+            else
+                pidIntegral = 0;
+
+            // calculate the derivative
+            pidDerivative = pidError - pidLastError;
+            pidLastError  = pidError;
+
+            // calculate drive
+            pidDrive = (pid_Kp * pidError) + (pid_Ki * pidIntegral) + (pid_Kd * pidDerivative);
+
+            // limit drive
+            if(pidDrive > PID_DRIVE_MAX )
+                pidDrive = PID_DRIVE_MAX;
+            if(pidDrive < PID_DRIVE_MIN )
+                pidDrive = PID_DRIVE_MIN;
+
+            // send to motor(s)
+            displayLCDNumber(0, 0, pidDrive, 5);
+            displayLCDNumber(1, 0, pidError, 5);
+            motor[frontLeft] = pidDrive * -1;
+            motor[backLeft] = pidDrive * -1;
+
+            }
+        else
+            {
+            // clear all
+            pidError      = 0;
+            pidLastError  = 0;
+            pidIntegral   = 0;
+            pidDerivative = 0;
+            //motor[ PID_MOTOR_INDEX ] = 0;
+            motor[frontRight] = 0;
+            motor[backRight] = 0;
+            }
+
+        // Run at 50Hz
+        wait1Msec(25);
+        }
+}
+
+
 
 void waitForPress()
 {
@@ -121,7 +212,7 @@ void pre_auton()
 	resetForAuton();
 	clearTimer(T1);
 	//default
-	autonNum = 2;
+	autonNum = 8;
 	//default
 	while(time1[T1] < 1000) {
 		displayLCDNumber(1, 0, time1[T1], 5);
@@ -140,7 +231,7 @@ void pre_auton()
 				waitForPress();
 				if(nLCDButtons == leftButton){
 					waitForRelease();
-					autonNum = 7;
+					autonNum = 8;
 				}
 				else if(nLCDButtons == rightButton){
 					waitForRelease();
@@ -235,10 +326,22 @@ void pre_auton()
 				}
 				else if(nLCDButtons == rightButton){
 					waitForRelease();
+					autonNum++;
+				}
+				break;
+			case 8:
+				displayLCDCenteredString(0, "test");
+				displayLCDCenteredString(1, "<     Enter    >");
+				waitForPress();
+				if(nLCDButtons == leftButton){
+					waitForRelease();
+					autonNum--;
+				}
+				else if(nLCDButtons == rightButton){
+					waitForRelease();
 					autonNum = 0;
 				}
 				break;
-
 
 			default:
 				break;
@@ -263,9 +366,7 @@ void pre_auton()
 /*  You must modify the code to add your own robot specific commands here.   */
 /*---------------------------------------------------------------------------*/
 
-int avgDrive(){
-	return (SensorValue[leftDrive] + SensorValue[rightDrive]) / 2.0;
-}
+
 
 void stopDrive(){
 	motor[backLeft] = 0;
@@ -279,21 +380,16 @@ void stopDrive(){
 
 void driveFwd(int left, int right, int count){
 	motor[backLeft] = left;
-
 	motor[frontLeft] = left;
 	motor[backRight] = right;
-
 	motor[frontRight] = right;
-
 	if((-1 * count) > 0){
 		while(avgDrive() < (-1 * count)){
-
 		}
 		stopDrive();
 	}
 	else {
 		while(avgDrive() > (-1 * count)){
-
 		}
 		stopDrive();
 	}
@@ -310,6 +406,20 @@ void driveMove(int left, int right){
 	motor[frontRight] = (-1 * right);
 }
 
+void initDPid(int target){
+	pidTarget = target;
+	pidRunning = true;
+
+}
+
+
+void testing(){
+	//testing pid auton
+	pidRunning = false;
+	startTask(pidController);
+	initDPid(-200);
+
+}
 
 void redParking(){
 	motor[liftRight] = -15;
@@ -706,6 +816,9 @@ task autonomous()
 	case 7:
 		displayLCDCenteredString(0, "3FlagBlue&Park");
 		flag3BluePark();
+	case 8:
+		displayLCDCenteredString(0, "test");
+		testing();
 	default:
 		displayLCDCenteredString(0, "No Auton Selected!");
 		break;
@@ -904,16 +1017,17 @@ task wristM(){
 
 void displayBattery(){
 	//Display the Primary Robot battery voltage
-	//displayLCDString(0, 0, "Primary: ");
+	displayLCDString(0, 0, "Primary: ");
 	sprintf(mainBattery, "%1.2f%c", nImmediateBatteryLevel / 1000.0,'V'); //Build the value to be displayed
 	displayNextLCDString(mainBattery);
 
 	//Display the Backup battery voltage
-	//displayLCDString(1, 0, "Backup: ");
-	sprintf(backupBattery, "%1.2f%c", SensorValue[power] / 70.8, 'V');    //Build the value to be displayed
+	displayLCDString(1, 0, "Backup: ");
+	sprintf(backupBattery, "%1.2f%c", SensorValue[power] / 280.0, 'V');    //Build the value to be displayed
 	displayNextLCDString(backupBattery);
 	
-	wait1Msec(1000);
+	wait1Msec(10);
+
 }
 
 void displaySensor(){
