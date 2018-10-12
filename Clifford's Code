@@ -66,8 +66,8 @@ int autonNum = 10;
 
 // These could be constants but leaving
 // as variables allows them to be modified in the debugger "live"
-float  pid_Kp = 2.0;
-float  pid_Ki = 0.04;
+float  pid_Kp = 0.4;
+float  pid_Ki = 0.0;
 float  pid_Kd = 0.0;
 
 static bool  pidRunning = true;
@@ -112,7 +112,7 @@ task pidController()
         if(pidRunning)
             {
             // Read the sensor value and scale
-            pidSensorCurrent = avgDrive();
+            pidSensorCurrent = SensorValue[leftDrive];
 
             // calculate error
             pidError = pidTarget - pidSensorCurrent;
@@ -143,8 +143,9 @@ task pidController()
                 pidDrive = PID_DRIVE_MIN;
 
             // send to motor(s)
-            displayLCDNumber(0, 0, pidDrive, 5);
-            displayLCDNumber(1, 0, pidError, 5);
+            displayLCDNumber(0, 0, pidDrive, 4);
+            displayLCDNumber(0, 8, pidError, 4);
+            displayLCDNumber(1, 0, SensorValue[leftDrive], 8);
             motor[frontLeft] = pidDrive * -1;
             motor[backLeft] = pidDrive * -1;
 
@@ -875,7 +876,7 @@ void straightDrive(){
 		motor[backLeft] = 90;
 		motor[frontLeft] = 90;
 		motor[backRight] = 90;
-		motor[frontRight] = 90;		
+		motor[frontRight] = 90;
 		} else if(vexRT[Btn7D] == 1) {
 		motor[backLeft] = -90;
 		motor[frontLeft] = -90;
@@ -885,7 +886,7 @@ void straightDrive(){
 		motor[backLeft] = 0;
 		motor[frontLeft] = 0;
 		motor[backRight] = 0;
-		motor[frontRight] = 0;	
+		motor[frontRight] = 0;
 	}
 
 }
@@ -1025,7 +1026,7 @@ void displayBattery(){
 	displayLCDString(1, 0, "Backup: ");
 	sprintf(backupBattery, "%1.2f%c", SensorValue[power] / 280.0, 'V');    //Build the value to be displayed
 	displayNextLCDString(backupBattery);
-	
+
 	wait1Msec(10);
 
 }
