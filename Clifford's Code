@@ -67,10 +67,10 @@ int autonNum = 10;
 // These could be constants but leaving
 // as variables allows them to be modified in the debugger "live"
 float  pid_Kp = 0.4;
-float  pid_Ki = 0.0;
-float  pid_Kd = 0.0;
+float  pid_Ki = 0.01;
+float  pid_Kd = 0.7;
 
-static bool  pidRunning = true;
+static bool  pidRunning = false;
 static float pidTarget;
 
 int avgDrive(){
@@ -91,80 +91,106 @@ void clearAll(){
 }
 task pidController()
 {
-    float  pidSensorCurrent;
+	float  pidSensorCurrent;
 
-    float  pidError;
-    float  pidLastError;
-    float  pidIntegral;
-    float  pidDerivative;
-    float  pidDrive;
+	float  pidError;
+	float  pidLastError;
+	float  pidIntegral;
+	float  pidDerivative;
+	float  pidDrive;
 
-    // If we are using an encoder then clear it
-    clearDrive();
+	// If we are using an encoder then clear it
+	clearDrive();
 
-    // Init the variables
-    pidLastError  = 0;
-    pidIntegral   = 0;
+	// Init the variables
+	pidLastError  = 0;
+	pidIntegral   = 0;
 
-    while(true)
-        {
-        // Is PID control active?
-        if(pidRunning)
-            {
-            // Read the sensor value and scale
-            pidSensorCurrent = SensorValue[leftDrive];
+	while(true)
+	{
+		// Is PID control active?
+		if(pidRunning)
+		{
+			// Read the sensor value and scale
+			pidSensorCurrent = avgDrive();
 
-            // calculate error
-            pidError = pidTarget - pidSensorCurrent;
 
-            // integral - if Ki is not 0
-            if(pid_Ki != 0)
-                {
-                // If we are inside controlable window then integrate the error
-                if(abs(pidError) < PID_INTEGRAL_LIMIT)
-                    pidIntegral = pidIntegral + pidError;
-                else
-                    pidIntegral = 0;
-                }
-            else
-                pidIntegral = 0;
+			// calculate error
+			pidError = pidTarget - pidSensorCurrent;
 
-            // calculate the derivative
-            pidDerivative = pidError - pidLastError;
-            pidLastError  = pidError;
+			// integral - if Ki is not 0
+			if(pid_Ki != 0)
+			{
+				// If we are inside controlable window then integrate the error
+				if(abs(pidError) < PID_INTEGRAL_LIMIT)
+					pidIntegral = pidIntegral + pidError;
+				else
+					pidIntegral = 0;
+			}
+			else
+				pidIntegral = 0;
 
-            // calculate drive
-            pidDrive = (pid_Kp * pidError) + (pid_Ki * pidIntegral) + (pid_Kd * pidDerivative);
 
-            // limit drive
-            if(pidDrive > PID_DRIVE_MAX )
-                pidDrive = PID_DRIVE_MAX;
-            if(pidDrive < PID_DRIVE_MIN )
-                pidDrive = PID_DRIVE_MIN;
 
-            // send to motor(s)
-            displayLCDNumber(0, 0, pidDrive, 4);
-            displayLCDNumber(0, 8, pidError, 4);
-            displayLCDNumber(1, 0, SensorValue[leftDrive], 8);
-            motor[frontLeft] = pidDrive * -1;
-            motor[backLeft] = pidDrive * -1;
 
-            }
-        else
-            {
-            // clear all
-            pidError      = 0;
-            pidLastError  = 0;
-            pidIntegral   = 0;
-            pidDerivative = 0;
-            //motor[ PID_MOTOR_INDEX ] = 0;
-            motor[frontRight] = 0;
-            motor[backRight] = 0;
-            }
+			// calculate the derivative
+			pidDerivative = pidError - pidLastError;
+			pidLastError  = pidError;
 
-        // Run at 50Hz
-        wait1Msec(25);
-        }
+			// calculate drive
+			pidDrive = (pid_Kp * pidError) + (pid_Ki * pidIntegral) + (pid_Kd * pidDerivative);
+			
+
+			// limit drive
+			if(pidDrive > PID_DRIVE_MAX )
+				pidDrive = PID_DRIVE_MAX;
+			if(pidDrive < PID_DRIVE_MIN )
+				pidDrive = PID_DRIVE_MIN;
+		
+				if(pidTarget < 0){
+				
+				if(((abs(avgDrive() - pidTarget) < 10)) && (avgDrive() < (pidTarget/2))){
+				pidRunning = false;
+				displayLCDNumber(1, 8, 3, 8);
+				}
+			}
+			else {
+				
+				if(((abs(avgDrive() - pidTarget) < 10)) && (avgDrive() > ( -1 * pidTarget/2))){
+				pidRunning = false;
+				displayLCDNumber(1, 8, 3, 8);
+				}
+			}
+				
+				
+			// send to motor(s)
+				/*
+			displayLCDNumber(1, 9, (-1 *pidTarget/2), 4);
+			displayLCDNumber(0, 0, pidDrive, 4);
+			displayLCDNumber(0, 8, pidError, 4);
+			displayLCDNumber(1, 0, SensorValue[leftDrive], 8);
+			*/
+			motor[frontLeft] = pidDrive * -1;
+			motor[backLeft] = pidDrive * -1;
+			motor[frontRight] = pidDrive * -1;
+			motor[backRight] = pidDrive * -1;
+
+		}
+		else
+		{
+			// clear all
+			pidError      = 0;
+			pidLastError  = 0;
+			pidIntegral   = 0;
+			pidDerivative = 0;
+			//motor[ PID_MOTOR_INDEX ] = 0;
+			motor[frontRight] = 0;
+			motor[backRight] = 0;
+		}
+
+		// Run at 50Hz
+		wait1Msec(25);
+	}
 }
 
 
@@ -213,7 +239,7 @@ void pre_auton()
 	resetForAuton();
 	clearTimer(T1);
 	//default
-	autonNum = 8;
+	autonNum = 1;
 	//default
 	while(time1[T1] < 1000) {
 		displayLCDNumber(1, 0, time1[T1], 5);
@@ -391,6 +417,7 @@ void driveFwd(int left, int right, int count){
 	}
 	else {
 		while(avgDrive() > (-1 * count)){
+			
 		}
 		stopDrive();
 	}
@@ -408,18 +435,75 @@ void driveMove(int left, int right){
 }
 
 void initDPid(int target){
-	pidTarget = target;
+	pidTarget = -1 * target;
 	pidRunning = true;
+	waitUntil(!pidRunning);
+		
 
 }
 
 
-void testing(){
+void testing(){/*
 	//testing pid auton
 	pidRunning = false;
 	startTask(pidController);
-	initDPid(-200);
+	
+//	initDPid(-1000);
+	
+	
+	motor[roller] = -127;
+	clearAll();
+	initDPid(860);
+	wait1Msec(700);
+	clearAll();
+	initDPid(-425);
+	motor[roller] = 0;
+	initDPid(-325);
+	wait1Msec(200);
+	driveMove(-50, 50);
+	motor[puncher] = 127;
+	while(SensorValue[gyro] < 770){
 
+	}
+	stopDrive();
+	wait1Msec(100);
+	clearAll();
+	initDPid(-80);
+	clearAll();
+	wait1Msec(500);
+	motor[puncher] = 0;
+
+	//second ball
+	motor[roller] = -127;
+	motor[puncher] = 127;
+	clearAll();
+	initDPid(470);
+	clearAll();
+
+	wait1Msec(1500);
+	motor[puncher] = 0;
+
+	motor[roller] = 0;
+	clearAll();
+	initDPid(300);
+	clearAll();
+
+	//left turn to hit flag
+	driveMove(-60, 60);
+	while(SensorValue[gyro] < 975){
+	}
+	stopDrive();
+	wait1Msec(200);
+	clearDrive();
+	initDPid(175);
+	wait1Msec(200);
+	clearAll();
+	//driving back
+	initDPid(-175);
+	clearAll();
+	*/
+	wait1Msec(10000);
+		
 }
 
 void redParking(){
