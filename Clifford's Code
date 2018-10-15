@@ -31,9 +31,12 @@
 #include "Vex_Competition_Includes.c"
 
 
+const short leftButton = 1;
+const short centerButton = 2;
+const short rightButton = 4;
+string mainBattery, backupBattery;
+
 //Variables for Toggle on Controllers
-
-
 
 bool wristPressed = false;
 bool wristStatus = false;
@@ -48,59 +51,31 @@ bool autoPos = false;
 int autonNum = 10;
 
 
-void wristToggleMovement(bool e){
-	int wristToggleTime = 420;
-	int margin = 0.2 * wristToggleTime;
-	int temp = 0;
-	if(!e)
-		temp = 1;
-	else
-		temp = -1;
-	//if e is false, need to turn right
-	//if e is true, need to turn left
-	clearTimer(T2);
-	int motorVal = 60 * temp;
-	motor[wrist] = motorVal;
-	while(time1[T2] < wristToggleTime){
-		if(time1[T2] > (wristToggleTime - margin)){
-			//start slowing motor power so it doesn't hit with big momentum
-			if((wristToggleTime - time1[T2]) < (margin / 4)){
-				motor[wrist] = 10 * temp;
-			}
-			else if((wristToggleTime - time1[T2]) < (margin / 2)){
-				motor[wrist] = motorVal / 2; //half of start value
-			}
-		}
-	}
-	motor[wrist] = 7 * temp;
-
-	//end stuff to reset and updating stuff
-	wristPressed = false;
-
-	//now that the wrist has moved, we can update it's position by inversing the boolean
-	wristStatus = !wristStatus;
-}
+/*PID*/
 /*
-task wristToggleTask(){
-//toggle the wrist
-while(true){
+#define PID_SENSOR_INDEX    myEncoder
+#define PID_SENSOR_SCALE    1
 
-wait1Msec(15);
-}
-}
-
+#define PID_MOTOR_INDEX     myMotor
+#define PID_MOTOR_SCALE     -1
 */
-/*---------------------------------------------------------------------------*/
-/*                          Pre-Autonomous Functions                         */
-/*                                                                           */
-/*  You may want to perform some actions before the competition starts.      */
-/*  Do them in the following function.  You must return from this function   */
-/*  or the autonomous and usercontrol tasks will not be started.  This       */
-/*  function is only called once after the cortex has been powered on and    */
-/*  not every time that the robot is disabled.                               */
-/*---------------------------------------------------------------------------*/
+#define PID_DRIVE_MAX       127
+#define PID_DRIVE_MIN     (-127)
 
+#define PID_INTEGRAL_LIMIT  50
 
+// These could be constants but leaving
+// as variables allows them to be modified in the debugger "live"
+float  pid_Kp = 0.4;
+float  pid_Ki = 0.01;
+float  pid_Kd = 0.7;
+
+static bool  pidRunning = false;
+static float pidTarget;
+
+int avgDrive(){
+	return (SensorValue[leftDrive] + SensorValue[rightDrive]) / 2.0;
+}
 void clearDrive(){
 	SensorValue[leftDrive] = 0;
 	SensorValue[rightDrive] = 0;
@@ -114,6 +89,111 @@ void clearAll(){
 	clearDrive();
 	clearOthers();
 }
+task pidController()
+{
+	float  pidSensorCurrent;
+
+	float  pidError;
+	float  pidLastError;
+	float  pidIntegral;
+	float  pidDerivative;
+	float  pidDrive;
+
+	// If we are using an encoder then clear it
+	clearDrive();
+
+	// Init the variables
+	pidLastError  = 0;
+	pidIntegral   = 0;
+
+	while(true)
+	{
+		// Is PID control active?
+		if(pidRunning)
+		{
+			// Read the sensor value and scale
+			pidSensorCurrent = avgDrive();
+
+
+			// calculate error
+			pidError = pidTarget - pidSensorCurrent;
+
+			// integral - if Ki is not 0
+			if(pid_Ki != 0)
+			{
+				// If we are inside controlable window then integrate the error
+				if(abs(pidError) < PID_INTEGRAL_LIMIT)
+					pidIntegral = pidIntegral + pidError;
+				else
+					pidIntegral = 0;
+			}
+			else
+				pidIntegral = 0;
+
+
+
+
+			// calculate the derivative
+			pidDerivative = pidError - pidLastError;
+			pidLastError  = pidError;
+
+			// calculate drive
+			pidDrive = (pid_Kp * pidError) + (pid_Ki * pidIntegral) + (pid_Kd * pidDerivative);
+			
+
+			// limit drive
+			if(pidDrive > PID_DRIVE_MAX )
+				pidDrive = PID_DRIVE_MAX;
+			if(pidDrive < PID_DRIVE_MIN )
+				pidDrive = PID_DRIVE_MIN;
+		
+				if(pidTarget < 0){
+				
+				if(((abs(avgDrive() - pidTarget) < 10)) && (avgDrive() < (pidTarget/2))){
+				pidRunning = false;
+				displayLCDNumber(1, 8, 3, 8);
+				}
+			}
+			else {
+				
+				if(((abs(avgDrive() - pidTarget) < 10)) && (avgDrive() > ( -1 * pidTarget/2))){
+				pidRunning = false;
+				displayLCDNumber(1, 8, 3, 8);
+				}
+			}
+				
+				
+			// send to motor(s)
+				/*
+			displayLCDNumber(1, 9, (-1 *pidTarget/2), 4);
+			displayLCDNumber(0, 0, pidDrive, 4);
+			displayLCDNumber(0, 8, pidError, 4);
+			displayLCDNumber(1, 0, SensorValue[leftDrive], 8);
+			*/
+			motor[frontLeft] = pidDrive * -1;
+			motor[backLeft] = pidDrive * -1;
+			motor[frontRight] = pidDrive * -1;
+			motor[backRight] = pidDrive * -1;
+
+		}
+		else
+		{
+			// clear all
+			pidError      = 0;
+			pidLastError  = 0;
+			pidIntegral   = 0;
+			pidDerivative = 0;
+			//motor[ PID_MOTOR_INDEX ] = 0;
+			motor[frontRight] = 0;
+			motor[backRight] = 0;
+		}
+
+		// Run at 50Hz
+		wait1Msec(25);
+	}
+}
+
+
 
 void waitForPress()
 {
@@ -128,21 +208,10 @@ void waitForRelease()
 	}
 }
 
-
-void pre_auton()
-{
-	clearAll();
-	// Set bStopTasksBetweenModes to false if you want to keep user created tasks
-	// running between Autonomous and Driver controlled modes. You will need to
-	// manage all user created tasks if set to false.
-	bStopTasksBetweenModes = true;
-	bDisplayCompetitionStatusOnLcd = false;
-
-	const short leftButton = 1;
-	const short centerButton = 2;
-	const short rightButton = 4;
+void resetForAuton(){
 	clearLCDLine(0);
 	clearLCDLine(1);
+	clearAll();
 	bLCDBacklight = true;
 	/* Gyro Setup */
 	SensorType[gyro] = sensorNone;
@@ -155,8 +224,23 @@ void pre_auton()
 	SensorFullCount[gyro] = 3000;
 	clearLCDLine(0);
 	clearLCDLine(1);
+}
+
+
+void pre_auton()
+{
+	clearAll();
+	// Set bStopTasksBetweenModes to false if you want to keep user created tasks
+	// running between Autonomous and Driver controlled modes. You will need to
+	// manage all user created tasks if set to false.
+	bStopTasksBetweenModes = true;
+	bDisplayCompetitionStatusOnLcd = false;
+
+	resetForAuton();
 	clearTimer(T1);
-	autonNum = 2;
+	//default
+	autonNum = 1;
+	//default
 	while(time1[T1] < 1000) {
 		displayLCDNumber(1, 0, time1[T1], 5);
 		if(nLCDButtons == centerButton) {
@@ -174,7 +258,7 @@ void pre_auton()
 				waitForPress();
 				if(nLCDButtons == leftButton){
 					waitForRelease();
-					autonNum = 5;
+					autonNum = 8;
 				}
 				else if(nLCDButtons == rightButton){
 					waitForRelease();
@@ -243,9 +327,49 @@ void pre_auton()
 				}
 				else if(nLCDButtons == rightButton){
 					waitForRelease();
+					autonNum++;
+				}
+				break;
+			case 6:
+				displayLCDCenteredString(0, "3FlagRpark");
+				displayLCDCenteredString(1, "<     Enter    >");
+				waitForPress();
+				if(nLCDButtons == leftButton){
+					waitForRelease();
+					autonNum--;
+				}
+				else if(nLCDButtons == rightButton){
+					waitForRelease();
+					autonNum++;
+				}
+				break;
+			case 7:
+				displayLCDCenteredString(0, "3FlagBpark");
+				displayLCDCenteredString(1, "<     Enter    >");
+				waitForPress();
+				if(nLCDButtons == leftButton){
+					waitForRelease();
+					autonNum--;
+				}
+				else if(nLCDButtons == rightButton){
+					waitForRelease();
+					autonNum++;
+				}
+				break;
+			case 8:
+				displayLCDCenteredString(0, "test");
+				displayLCDCenteredString(1, "<     Enter    >");
+				waitForPress();
+				if(nLCDButtons == leftButton){
+					waitForRelease();
+					autonNum--;
+				}
+				else if(nLCDButtons == rightButton){
+					waitForRelease();
 					autonNum = 0;
 				}
 				break;
+
 			default:
 				break;
 			}	//switch
@@ -269,9 +393,7 @@ void pre_auton()
 /*  You must modify the code to add your own robot specific commands here.   */
 /*---------------------------------------------------------------------------*/
 
-int avgDrive(){
-	return (SensorValue[leftDrive] + SensorValue[rightDrive]) / 2.0;
-}
+
 
 void stopDrive(){
 	motor[backLeft] = 0;
@@ -285,21 +407,17 @@ void stopDrive(){
 
 void driveFwd(int left, int right, int count){
 	motor[backLeft] = left;
-
 	motor[frontLeft] = left;
 	motor[backRight] = right;
-
 	motor[frontRight] = right;
-
 	if((-1 * count) > 0){
 		while(avgDrive() < (-1 * count)){
-
 		}
 		stopDrive();
 	}
 	else {
 		while(avgDrive() > (-1 * count)){
-
+			
 		}
 		stopDrive();
 	}
@@ -316,6 +434,77 @@ void driveMove(int left, int right){
 	motor[frontRight] = (-1 * right);
 }
 
+void initDPid(int target){
+	pidTarget = -1 * target;
+	pidRunning = true;
+	waitUntil(!pidRunning);
+		
+
+}
+
+
+void testing(){/*
+	//testing pid auton
+	pidRunning = false;
+	startTask(pidController);
+	
+//	initDPid(-1000);
+	
+	
+	motor[roller] = -127;
+	clearAll();
+	initDPid(860);
+	wait1Msec(700);
+	clearAll();
+	initDPid(-425);
+	motor[roller] = 0;
+	initDPid(-325);
+	wait1Msec(200);
+	driveMove(-50, 50);
+	motor[puncher] = 127;
+	while(SensorValue[gyro] < 770){
+
+	}
+	stopDrive();
+	wait1Msec(100);
+	clearAll();
+	initDPid(-80);
+	clearAll();
+	wait1Msec(500);
+	motor[puncher] = 0;
+
+	//second ball
+	motor[roller] = -127;
+	motor[puncher] = 127;
+	clearAll();
+	initDPid(470);
+	clearAll();
+
+	wait1Msec(1500);
+	motor[puncher] = 0;
+
+	motor[roller] = 0;
+	clearAll();
+	initDPid(300);
+	clearAll();
+
+	//left turn to hit flag
+	driveMove(-60, 60);
+	while(SensorValue[gyro] < 975){
+	}
+	stopDrive();
+	wait1Msec(200);
+	clearDrive();
+	initDPid(175);
+	wait1Msec(200);
+	clearAll();
+	//driving back
+	initDPid(-175);
+	clearAll();
+	*/
+	wait1Msec(10000);
+		
+}
 
 void redParking(){
 	motor[liftRight] = -15;
@@ -354,11 +543,11 @@ void blueParking(){
 
 void backRedFlag(){
 	clearAll();
-//	wait1Msec(5000);
-		motor[puncher] = 127;
-		wait1Msec(2000);
-	  motor[puncher] = 0;
-	  clearAll();
+	wait1Msec(5000);
+	motor[puncher] = 127;
+	wait1Msec(2000);
+	motor[puncher] = 0;
+	clearAll();
 	driveMove(70, 0);
 	while(SensorValue[gyro] > -300){
 	}
@@ -378,24 +567,43 @@ void backRedFlag(){
 	clearDrive();
 	motor[liftRight] = -15;
 	motor[liftLeft] = -15;
-	driveFwd(120, 120, 650);
+	driveFwd(120, 120, 750);
 	motor[liftRight] = 0;
 	motor[liftLeft] = 0;
 	wait1Msec(10000);
 }
 
 void backBlueFlag(){
-	
-
+	clearAll();
+	wait1Msec(5000);
+	motor[puncher] = 127;
+	wait1Msec(2000);
+	motor[puncher] = 0;
+	clearAll();
+	driveMove(0, 70);
+	while(SensorValue[gyro] < 300){
+	}
+	stopDrive();
+	wait1Msec(200);
+	motor[roller] = -127;
+	driveFwd(50, 50, 920);
+	wait1Msec(700);
+	clearDrive();
+	driveFwd(-50, -50, -30);
+	wait1Msec(200);
+	clearAll();
+	driveMove(60, -60);
+	while(SensorValue[gyro] > -300){
+	}
+	stopDrive();
+	clearDrive();
+	motor[liftRight] = -15;
+	motor[liftLeft] = -15;
+	driveFwd(120, 120, 800);
+	motor[liftRight] = 0;
+	motor[liftLeft] = 0;
+	wait1Msec(10000);
 }
-
-
-
-
-
-
-
-
 
 
 
@@ -412,7 +620,7 @@ void flag3Red(){
 	driveMove(-50, 50);
 	motor[puncher] = 127;
 	while(SensorValue[gyro] < 770){
-			
+
 	}
 	stopDrive();
 	wait1Msec(100);
@@ -421,14 +629,14 @@ void flag3Red(){
 	clearAll();
 	wait1Msec(500);
 	motor[puncher] = 0;
-	
+
 	//second ball
 	motor[roller] = -127;
 	motor[puncher] = 127;
 	clearAll();
 	driveFwd(50, 50, 470);
 	clearAll();
-	
+
 	wait1Msec(1500);
 	motor[puncher] = 0;
 
@@ -436,7 +644,7 @@ void flag3Red(){
 	clearAll();
 	driveFwd(50, 50, 300);
 	clearAll();
-	
+
 	//left turn to hit flag
 	driveMove(-60, 60);
 	while(SensorValue[gyro] < 975){
@@ -450,26 +658,8 @@ void flag3Red(){
 	//driving back
 	driveFwd(-127, -127, -175);
 	clearAll();
-	/*
-	driveMove(60, -60);
-	while(SensorValue[gyro] > 800){
-	}
-	stopDrive();
-	*/
-	clearAll();
-	driveFwd(-120, -120, -1500);
-	clearAll();
-	driveMove(50, -50);
-	motor[liftRight] = -15;
-	motor[liftLeft] = -15;
-	while(SensorValue[gyro] > 200){
-	}
-	stopDrive();
-	driveFwd(127, 127, 1200);
-	motor[liftRight] = 0;
-	motor[liftLeft] = 0;
 	wait1Msec(10000);
-	
+
 }
 
 void flag3Blue(){
@@ -485,9 +675,9 @@ void flag3Blue(){
 	driveMove(50, -50);
 	motor[puncher] = 90;
 	while(SensorValue[gyro] > -730){
-	//	if(SensorValue[gyro] < -100){
-	//		motor[puncher] = 127;
-	//		}
+		//	if(SensorValue[gyro] < -100){
+		//		motor[puncher] = 127;
+		//		}
 	}
 	stopDrive();
 	wait1Msec(100);
@@ -496,14 +686,14 @@ void flag3Blue(){
 	clearAll();
 	wait1Msec(500);
 	motor[puncher] = 0;
-	
+
 	//second ball
 	motor[roller] = -127;
 	motor[puncher] = 127;
 	clearAll();
 	driveFwd(50, 50, 470);
 	clearAll();
-	
+
 	wait1Msec(1500);
 	motor[puncher] = 0;
 
@@ -511,10 +701,141 @@ void flag3Blue(){
 	clearAll();
 	driveFwd(50, 50, 270);
 	clearAll();
-	
+
 	//left turn to hit flag
 	driveMove(90, -90);
-	while(SensorValue[gyro] > -1030){
+	while(SensorValue[gyro] > -950){
+	}
+	stopDrive();
+	wait1Msec(200);
+	clearDrive();
+	driveFwd(80, 80, 205);
+	wait1Msec(200);
+	clearAll();
+	//driving back
+	driveFwd(-60, -127, -175);
+	clearAll();
+	wait1Msec(10000);
+}
+
+
+
+void flag3RedPark(){
+	motor[roller] = -127;
+	clearAll();
+	driveFwd(65, 65, 860);
+	wait1Msec(700);
+	clearAll();
+	driveFwd(-100, -100, -425);
+	motor[roller] = 0;
+	driveFwd(-100, -100, -330);
+	wait1Msec(200);
+	driveMove(-50, 50);
+	motor[puncher] = 127;
+	while(SensorValue[gyro] < 770){
+
+	}
+	stopDrive();
+	wait1Msec(100);
+	clearAll();
+	driveFwd(-50, -50, -80);
+	clearAll();
+	wait1Msec(500);
+	motor[puncher] = 0;
+
+	//second ball
+	motor[roller] = -127;
+	motor[puncher] = 127;
+	clearAll();
+	driveFwd(50, 50, 470);
+	clearAll();
+
+	wait1Msec(1500);
+	motor[puncher] = 0;
+
+	motor[roller] = 0;
+	clearAll();
+	driveFwd(50, 50, 300);
+	clearAll();
+
+	//left turn to hit flag
+	driveMove(-60, 60);
+	while(SensorValue[gyro] < 975){
+	}
+	stopDrive();
+	wait1Msec(200);
+	clearDrive();
+	driveFwd(127, 127, 175);
+	wait1Msec(200);
+	clearAll();
+	//driving back
+		driveFwd(-127, -80, -175);
+	clearAll();
+	/*
+	driveMove(60, -60);
+	while(SensorValue[gyro] > 800){
+	}
+	stopDrive();
+	*/
+	clearAll();
+	driveFwd(-125, -75, -1600);
+	clearAll();
+	driveMove(50, -50);
+	motor[liftRight] = -15;
+	motor[liftLeft] = -15;
+	while(SensorValue[gyro] > 200){
+	}
+	stopDrive();
+	driveFwd(127, 127, 1200);
+	motor[liftRight] = 0;
+	motor[liftLeft] = 0;
+	wait1Msec(10000);
+
+}
+
+void flag3BluePark(){
+	motor[roller] = -127;
+	clearAll();
+	driveFwd(60, 60, 860);
+	wait1Msec(700);
+	clearAll();
+	driveFwd(-100, -100, -350);
+	motor[roller] = 0;
+	driveFwd(-100, -100, -380);
+	wait1Msec(200);
+	driveMove(50, -50);
+	motor[puncher] = 90;
+	while(SensorValue[gyro] > -730){
+		//	if(SensorValue[gyro] < -100){
+		//		motor[puncher] = 127;
+		//		}
+	}
+	stopDrive();
+	wait1Msec(100);
+	clearAll();
+	driveFwd(-50, -50, -80);
+	clearAll();
+	wait1Msec(500);
+	motor[puncher] = 0;
+
+	//second ball
+	motor[roller] = -127;
+	motor[puncher] = 127;
+	clearAll();
+	driveFwd(50, 50, 470);
+	clearAll();
+
+	wait1Msec(1500);
+	motor[puncher] = 0;
+
+	motor[roller] = 0;
+	clearAll();
+	driveFwd(50, 50, 270);
+	clearAll();
+
+	//left turn to hit flag
+	driveMove(90, -90);
+	while(SensorValue[gyro] > -950){
 	}
 	stopDrive();
 	wait1Msec(200);
@@ -559,7 +880,6 @@ task autonomous()
 	case 0:
 		displayLCDCenteredString(0, "redParking");
 		redParking();
-
 	case 1:
 		displayLCDCenteredString(0, "blueParking");
 		blueParking();
@@ -575,14 +895,53 @@ task autonomous()
 	case 5:
 		displayLCDCenteredString(0, "3FlagBlue");
 		flag3Blue();
+	case 6:
+		displayLCDCenteredString(0, "3FlagRed&Park");
+		flag3RedPark();
+	case 7:
+		displayLCDCenteredString(0, "3FlagBlue&Park");
+		flag3BluePark();
+	case 8:
+		displayLCDCenteredString(0, "test");
+		testing();
 	default:
 		displayLCDCenteredString(0, "No Auton Selected!");
 		break;
-
 	}
-
 }
 
+void wristToggleMovement(bool e){
+	int wristToggleTime = 420;
+	int margin = 0.2 * wristToggleTime;
+	int temp = 0;
+	if(!e)
+		temp = 1;
+	else
+		temp = -1;
+	//if e is false, need to turn right
+	//if e is true, need to turn left
+	clearTimer(T2);
+	int motorVal = 60 * temp;
+	motor[wrist] = motorVal;
+	while(time1[T2] < wristToggleTime){
+		if(time1[T2] > (wristToggleTime - margin)){
+			//start slowing motor power so it doesn't hit with big momentum
+			if((wristToggleTime - time1[T2]) < (margin / 4)){
+				motor[wrist] = 10 * temp;
+			}
+			else if((wristToggleTime - time1[T2]) < (margin / 2)){
+				motor[wrist] = motorVal / 2; //half of start value
+			}
+		}
+	}
+	motor[wrist] = 7 * temp;
+
+	//end stuff to reset and updating stuff
+	wristPressed = false;
+
+	//now that the wrist has moved, we can update it's position by inversing the boolean
+	wristStatus = !wristStatus;
+}
 
 void driveTrain(){
 	motor[frontLeft] = vexRT[Ch2];
@@ -591,6 +950,31 @@ void driveTrain(){
 	motor[frontRight] = vexRT[Ch3];
 	motor[backRight] = vexRT[Ch3];
 }
+
+void straightDrive(){
+	//up button drives perfectly forward
+	//down button drives perfectly backward
+	//when nothing is pressed, drive is still, so no annoying motor humming (:
+
+	if(vexRT[Btn7U] == 1) {
+		motor[backLeft] = 90;
+		motor[frontLeft] = 90;
+		motor[backRight] = 90;
+		motor[frontRight] = 90;
+		} else if(vexRT[Btn7D] == 1) {
+		motor[backLeft] = -90;
+		motor[frontLeft] = -90;
+		motor[backRight] = -90;
+		motor[frontRight] = -90;
+		} else {
+		motor[backLeft] = 0;
+		motor[frontLeft] = 0;
+		motor[backRight] = 0;
+		motor[frontRight] = 0;
+	}
+
+}
+
 void rollerMove(){
 	if(vexRT[Btn5U] == 1) {
 		motor[roller] = 127;
@@ -600,17 +984,18 @@ void rollerMove(){
 		motor[roller] = 0;
 	}
 }
-void wristMove(){
-	/*
-	if(vexRT[Btn8UXmtr2] == 1) {
-	motor[wrist] = -40;
-	} else if(vexRT[Btn8DXmtr2] == 1) {
-	motor[wrist] = 40;
-	} else {
-	motor[wrist] = 0;
+void slowFourBar(){
+	//only works when fourbar is holding cap, so we can slowly lower it
+	if(fourBarBool){
+		if(vexRT[Btn7UXmtr2] == 1) {
+			motor[fourbar] = -10;
+			} else if(vexRT[Btn7DXmtr2] == 1) {
+			motor[fourbar] = 25;
+			} else {
+			motor[fourbar] = 15;
+		}
 
-
-	}	*/
+	}
 }
 
 void fourBarMove(){
@@ -671,79 +1056,101 @@ void wristToggleCheck(){
 
 }
 
-
+void resetAuton(){
+	if(nLCDButtons == centerButton){
+		waitForRelease();
+		resetForAuton();
+	}
+}
 
 void regularRemote(){
 	//regular button pressing
 
-	//ved betas
+	//veds
 	driveTrain();
 	puncherMove();
 	rollerMove();
+	//	straightDrive();
 
-	//tanvi betas
+
+	//tanvis
 	mainLift();
-	wristMove();
+	slowFourBar();
 	fourBarMove();
+
+
 	//toggles and special stuff
 	wristToggleCheck();
 
+	//LCD and other display stuff
+	//reset values for trying auton
+	resetAuton();
+}
+
+
+task wristM(){
+	while(true){
+		if(wristPressed){
+			//code to run for moving wrist
+			wristToggleMovement(wristStatus);
+			//run wrist function goes here^
+		}
+		wait1Msec(20);
+	}
+}
+
+
+void displayBattery(){
+	//Display the Primary Robot battery voltage
+	displayLCDString(0, 0, "Primary: ");
+	sprintf(mainBattery, "%1.2f%c", nImmediateBatteryLevel / 1000.0,'V'); //Build the value to be displayed
+	displayNextLCDString(mainBattery);
+
+	//Display the Backup battery voltage
+	displayLCDString(1, 0, "Backup: ");
+	sprintf(backupBattery, "%1.2f%c", SensorValue[power] / 280.0, 'V');    //Build the value to be displayed
+	displayNextLCDString(backupBattery);
+
+	wait1Msec(10);
 
 }
+
+void displaySensor(){
+	displayLCDString(0, 0, "G ");
+	displayLCDNumber(0, 2, SensorValue[gyro]);
+	displayLCDString(0, 7, "RD ");
+	displayLCDNumber(0, 10, SensorValue[rightDrive]);
+	displayLCDString(1, 0, "LD ");
+	displayLCDNumber(1, 3, SensorValue[leftDrive]);
+	displayLCDString(1, 7, "L ");
+	displayLCDNumber(1, 9, SensorValue[liftE]);
+}
+
 task usercontrol()
 {
-	//wristToggle Tastk
+	//wristToggle Task
+	startTask(wristM);
+
+
 
 	clearAll();
-	string mainBattery;
-	string expanderBattery;
-
 	while (true) {
 		//Main Controls for Everything
 		regularRemote();
 		clearLCDLine(0);
 		clearLCDLine(1);
 
-		if(wristPressed){
-			//code to run for moving wrist
-			wristToggleMovement(wristStatus);
-			//run wrist function goes here^
+		if(false){
+			displaySensor();
 		}
-
-		if(true){
-
-			displayLCDString(0, 0, "G ");
-			displayLCDNumber(0, 2, SensorValue[gyro]);
-
-			displayLCDString(0, 7, "RD ");
-			displayLCDNumber(0, 10, SensorValue[rightDrive]);
-
-			displayLCDString(1, 0, "LD ");
-			displayLCDNumber(1, 3, SensorValue[leftDrive]);
-
-
-			displayLCDString(1, 7, "L ");
-			displayLCDNumber(1, 9, SensorValue[liftE]);
+		else if (true){
+			displayBattery();
 		}
-		else if (1==1){
+		else if (true){
 			displayLCDCenteredString(0, "User");
 			displayLCDCenteredString(1, "Control");
 		}
-		else {
-			// declare some string variables to hold the formatted information
-
-			sprintf(mainBattery," %f Volts",(float)nImmediateBatteryLevel/1000.0);
-			sprintf(expanderBattery," %f Volts",(float)SensorValue[power]/270.0);
-			clearLCDLine(0);
-			clearLCDLine(1);
-			displayLCDString(0,0,mainBattery);
-			displayLCDString(1,0,expanderBattery);
-			// wait 1 second before reading the volts again. Just because.
-			wait1Msec(1000);
-		}
+		wait1Msec(10);
 	}
-
-	wait1Msec(15);
-
+	stopTask(wristM);
 }
-
