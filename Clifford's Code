@@ -46,6 +46,10 @@ bool fourBarBool = false;
 //wristStatus is true when wrist is on right position; it is able to turn the cap left, or counter-clockwise
 //direction of clockwise/counter is taken from perspective of wrist motor
 
+
+bool lcdDispPos = true;
+
+
 //Other Variables
 bool autoPos = false;
 int autonNum = 10;
@@ -1063,6 +1067,15 @@ void resetAuton(){
 	}
 }
 
+void lcdSwitcher(){
+
+	if((nLCDButtons == leftButton) || (nLCDButtons == rightButton)){
+		waitForRelease();
+		lcdDispPos = !lcdDispPos;
+	}
+
+}
+
 void regularRemote(){
 	//regular button pressing
 
@@ -1078,13 +1091,17 @@ void regularRemote(){
 	slowFourBar();
 	fourBarMove();
 
+}
 
+void otherFunc(){
 	//toggles and special stuff
 	wristToggleCheck();
 
 	//LCD and other display stuff
 	//reset values for trying auton
 	resetAuton();
+	lcdSwitcher();
+
 }
 
 
@@ -1131,25 +1148,27 @@ task usercontrol()
 	//wristToggle Task
 	startTask(wristM);
 
-
-
 	clearAll();
 	while (true) {
 		//Main Controls for Everything
 		regularRemote();
+		otherFunc();
+
+
+//display code for LCD
 		clearLCDLine(0);
 		clearLCDLine(1);
 
-		if(false){
+		if(lcdDispPos){
 			displaySensor();
 		}
-		else if (true){
+		else {
 			displayBattery();
 		}
-		else if (true){
-			displayLCDCenteredString(0, "User");
-			displayLCDCenteredString(1, "Control");
-		}
+
+//display code for LCD
+
+
 		wait1Msec(10);
 	}
 	stopTask(wristM);
