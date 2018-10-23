@@ -40,7 +40,8 @@ string mainBattery, backupBattery;
 
 bool wristPressed = false;
 bool wristStatus = false;
-bool fourBarBool = false;
+bool fourBarBool = true;
+bool drivePos = true;
 //deafult false cause flip out mech starts it there
 //wristStatus is false when wrist is on the left position; it is able to turn the cap right, or clockwise
 //wristStatus is true when wrist is on right position; it is able to turn the cap left, or counter-clockwise
@@ -134,39 +135,36 @@ task pidController()
 			else
 				pidIntegral = 0;
 
-
-
-
 			// calculate the derivative
 			pidDerivative = pidError - pidLastError;
 			pidLastError  = pidError;
 
 			// calculate drive
 			pidDrive = (pid_Kp * pidError) + (pid_Ki * pidIntegral) + (pid_Kd * pidDerivative);
-			
+
 
 			// limit drive
 			if(pidDrive > PID_DRIVE_MAX )
 				pidDrive = PID_DRIVE_MAX;
 			if(pidDrive < PID_DRIVE_MIN )
 				pidDrive = PID_DRIVE_MIN;
-		
+
 				if(pidTarget < 0){
-				
+
 				if(((abs(avgDrive() - pidTarget) < 10)) && (avgDrive() < (pidTarget/2))){
 				pidRunning = false;
-				displayLCDNumber(1, 8, 3, 8);
+		//		displayLCDNumber(1, 8, 3, 8);
 				}
 			}
 			else {
-				
+
 				if(((abs(avgDrive() - pidTarget) < 10)) && (avgDrive() > ( -1 * pidTarget/2))){
 				pidRunning = false;
-				displayLCDNumber(1, 8, 3, 8);
+			//	displayLCDNumber(1, 8, 3, 8);
 				}
 			}
-				
-				
+
+
 			// send to motor(s)
 				/*
 			displayLCDNumber(1, 9, (-1 *pidTarget/2), 4);
@@ -243,7 +241,7 @@ void pre_auton()
 	resetForAuton();
 	clearTimer(T1);
 	//default
-	autonNum = 1;
+	autonNum = 4;
 	//default
 	while(time1[T1] < 1000) {
 		displayLCDNumber(1, 0, time1[T1], 5);
@@ -262,7 +260,7 @@ void pre_auton()
 				waitForPress();
 				if(nLCDButtons == leftButton){
 					waitForRelease();
-					autonNum = 8;
+					autonNum = 10;
 				}
 				else if(nLCDButtons == rightButton){
 					waitForRelease();
@@ -334,8 +332,8 @@ void pre_auton()
 					autonNum++;
 				}
 				break;
-			case 6:
-				displayLCDCenteredString(0, "3FlagRpark");
+				case 6:
+				displayLCDCenteredString(0, "3FlagRedWEnd");
 				displayLCDCenteredString(1, "<     Enter    >");
 				waitForPress();
 				if(nLCDButtons == leftButton){
@@ -347,8 +345,8 @@ void pre_auton()
 					autonNum++;
 				}
 				break;
-			case 7:
-				displayLCDCenteredString(0, "3FlagBpark");
+				case 7:
+				displayLCDCenteredString(0, "3FlagBlueWEnd");
 				displayLCDCenteredString(1, "<     Enter    >");
 				waitForPress();
 				if(nLCDButtons == leftButton){
@@ -361,7 +359,33 @@ void pre_auton()
 				}
 				break;
 			case 8:
-				displayLCDCenteredString(0, "test");
+				displayLCDCenteredString(0, "3FlagRpark");
+				displayLCDCenteredString(1, "<     Enter    >");
+				waitForPress();
+				if(nLCDButtons == leftButton){
+					waitForRelease();
+					autonNum--;
+				}
+				else if(nLCDButtons == rightButton){
+					waitForRelease();
+					autonNum++;
+				}
+				break;
+			case 9:
+				displayLCDCenteredString(0, "3FlagBpark");
+				displayLCDCenteredString(1, "<     Enter    >");
+				waitForPress();
+				if(nLCDButtons == leftButton){
+					waitForRelease();
+					autonNum--;
+				}
+				else if(nLCDButtons == rightButton){
+					waitForRelease();
+					autonNum++;
+				}
+				break;
+			case 10:
+				displayLCDCenteredString(0, "No Auton");
 				displayLCDCenteredString(1, "<     Enter    >");
 				waitForPress();
 				if(nLCDButtons == leftButton){
@@ -397,6 +421,9 @@ void pre_auton()
 /*  You must modify the code to add your own robot specific commands here.   */
 /*---------------------------------------------------------------------------*/
 
+void pidDelay(){
+	waitUntil(!pidRunning);
+}
 
 
 void stopDrive(){
@@ -421,7 +448,7 @@ void driveFwd(int left, int right, int count){
 	}
 	else {
 		while(avgDrive() > (-1 * count)){
-			
+
 		}
 		stopDrive();
 	}
@@ -441,8 +468,8 @@ void driveMove(int left, int right){
 void initDPid(int target){
 	pidTarget = -1 * target;
 	pidRunning = true;
-	waitUntil(!pidRunning);
-		
+	//waitUntil(!pidRunning);
+
 
 }
 
@@ -451,28 +478,37 @@ void testing(){/*
 	//testing pid auton
 	pidRunning = false;
 	startTask(pidController);
-	
+
 //	initDPid(-1000);
-	
-	
+
+
 	motor[roller] = -127;
 	clearAll();
-	initDPid(860);
+	initDPid(990);
+	pidDelay();
 	wait1Msec(700);
 	clearAll();
-	initDPid(-425);
+	initDPid(-890);
+	//after 425 stop rollers
+	//waitUntil(avgDrive() < -425);
+	wait1Msec(750);
+	displayLCDCenteredString(1 , "here");
 	motor[roller] = 0;
-	initDPid(-325);
+	pidDelay();
+	clearLCDLine(1);
+	displayLCDCenteredString(1 , "ok");
+	stopTask(pidController);
 	wait1Msec(200);
 	driveMove(-50, 50);
 	motor[puncher] = 127;
-	while(SensorValue[gyro] < 770){
-
+	while(SensorValue[gyro] < 790){
 	}
 	stopDrive();
 	wait1Msec(100);
 	clearAll();
-	initDPid(-80);
+	//initDPid(-90);
+	driveFwd(-50, -50, -80);
+	//pidDelay();
 	clearAll();
 	wait1Msec(500);
 	motor[puncher] = 0;
@@ -481,7 +517,9 @@ void testing(){/*
 	motor[roller] = -127;
 	motor[puncher] = 127;
 	clearAll();
+	startTask(pidController);
 	initDPid(470);
+	pidDelay();
 	clearAll();
 
 	wait1Msec(1500);
@@ -490,24 +528,29 @@ void testing(){/*
 	motor[roller] = 0;
 	clearAll();
 	initDPid(300);
+	pidDelay();
 	clearAll();
 
 	//left turn to hit flag
+	stopTask(pidController);
 	driveMove(-60, 60);
 	while(SensorValue[gyro] < 975){
 	}
 	stopDrive();
 	wait1Msec(200);
 	clearDrive();
-	initDPid(175);
+	//initDPid(175);
+	driveFwd(127, 127, 175);
 	wait1Msec(200);
 	clearAll();
 	//driving back
-	initDPid(-175);
+	//initDPid(-175);
+	driveFwd(-127, -127, -175);
 	clearAll();
+	
+
+	wait1Msec(20000);
 	*/
-	wait1Msec(10000);
-		
 }
 
 void redParking(){
@@ -617,13 +660,13 @@ void flag3Red(){
 	driveFwd(65, 65, 860);
 	wait1Msec(700);
 	clearAll();
-	driveFwd(-100, -100, -425);
-	motor[roller] = 0;
 	driveFwd(-100, -100, -325);
+	motor[roller] = 0;
+	driveFwd(-100, -100, -430);
 	wait1Msec(200);
 	driveMove(-50, 50);
 	motor[puncher] = 127;
-	while(SensorValue[gyro] < 770){
+	while(SensorValue[gyro] < 780){
 
 	}
 	stopDrive();
@@ -659,12 +702,12 @@ void flag3Red(){
 	driveFwd(127, 127, 175);
 	wait1Msec(200);
 	clearAll();
-	//driving back
-	driveFwd(-127, -127, -175);
-	clearAll();
 	wait1Msec(10000);
 
 }
+
+
+
 
 void flag3Blue(){
 	motor[roller] = -127;
@@ -719,6 +762,157 @@ void flag3Blue(){
 	//driving back
 	driveFwd(-60, -127, -175);
 	clearAll();
+	wait1Msec(10000);
+}
+
+void flag3RedEnd(){
+	motor[roller] = -127;
+	clearAll();
+	driveFwd(65, 65, 860);
+	wait1Msec(700);
+	clearAll();
+	driveFwd(-100, -100, -325);
+	motor[roller] = 0;
+	driveFwd(-100, -100, -430);
+	wait1Msec(200);
+	driveMove(-50, 50);
+	motor[puncher] = 127;
+	while(SensorValue[gyro] < 780){
+
+	}
+	stopDrive();
+	wait1Msec(100);
+	clearAll();
+	driveFwd(-50, -50, -80);
+	clearAll();
+	wait1Msec(500);
+	motor[puncher] = 0;
+
+	//second ball
+	motor[roller] = -127;
+	motor[puncher] = 127;
+	clearAll();
+	driveFwd(50, 50, 470);
+	clearAll();
+
+	wait1Msec(1500);
+	motor[puncher] = 0;
+
+	motor[roller] = 0;
+	clearAll();
+	driveFwd(50, 50, 300);
+	clearAll();
+
+	//left turn to hit flag
+	driveMove(-60, 60);
+	while(SensorValue[gyro] < 975){
+	}
+	stopDrive();
+	wait1Msec(200);
+	clearDrive();
+	driveFwd(127, 127, 175);
+	wait1Msec(200);
+	clearAll();
+	//driving back
+	driveFwd(-80, -80, -210);
+	clearAll();
+	//align towards next cap
+	driveMove(60, -60);
+	while(SensorValue[gyro] > 100){
+	}
+	stopDrive();
+	wait1Msec(200);
+	motor[roller] = 127;
+	//flip it
+	driveFwd(80, 80, 750);
+	motor[roller] = 0;
+	wait1Msec(200);
+	clearAll();
+	driveFwd(-120, -120, -300);
+	clearAll();
+	wait1Msec(100);
+	driveMove(-60, 60);
+	while(SensorValue[gyro] < 340){
+	}
+	driveFwd(120, 120, 420);
+	wait1Msec(10000);
+
+}
+
+
+
+void flag3BlueEnd(){
+	motor[roller] = -127;
+	clearAll();
+	driveFwd(60, 60, 860);
+	wait1Msec(700);
+	clearAll();
+	driveFwd(-100, -100, -350);
+	motor[roller] = 0;
+	driveFwd(-100, -100, -380);
+	wait1Msec(200);
+	driveMove(50, -50);
+	motor[puncher] = 90;
+	while(SensorValue[gyro] > -730){
+		//	if(SensorValue[gyro] < -100){
+		//		motor[puncher] = 127;
+		//		}
+	}
+	stopDrive();
+	wait1Msec(100);
+	clearAll();
+	driveFwd(-50, -50, -80);
+	clearAll();
+	wait1Msec(500);
+	motor[puncher] = 0;
+
+	//second ball
+	motor[roller] = -127;
+	motor[puncher] = 127;
+	clearAll();
+	driveFwd(50, 50, 470);
+	clearAll();
+
+	wait1Msec(1500);
+	motor[puncher] = 0;
+
+	motor[roller] = 0;
+	clearAll();
+	driveFwd(50, 50, 270);
+	clearAll();
+
+	//right turn to hit flag
+	driveMove(90, -90);
+	while(SensorValue[gyro] > -950){
+	}
+	stopDrive();
+	wait1Msec(200);
+	clearDrive();
+	driveFwd(80, 80, 205);
+	wait1Msec(200);
+	clearAll();
+	//driving back
+	driveFwd(-60, -127, -175);
+	clearAll();
+	//align towards next cap
+	driveMove(-60, 60);
+	while(SensorValue[gyro] < -100){
+	}
+	stopDrive();
+	wait1Msec(200);
+	motor[roller] = 127;
+	//flip it
+	driveFwd(80, 80, 750);
+	motor[roller] = 0;
+	wait1Msec(200);
+	clearAll();
+	driveFwd(-120, -120, -300);
+	clearAll();
+	wait1Msec(100);
+	driveMove(60, -60);
+	while(SensorValue[gyro] > -340){
+	}
+	driveFwd(120, 120, 420);
 	wait1Msec(10000);
 }
 
@@ -900,12 +1094,18 @@ task autonomous()
 		displayLCDCenteredString(0, "3FlagBlue");
 		flag3Blue();
 	case 6:
+		displayLCDCenteredString(0, "3FlagRed&End");
+		flag3RedEnd();
+	case 7:
+		displayLCDCenteredString(0, "3FlagBlue&End");
+		flag3BlueEnd();
+	case 8:
 		displayLCDCenteredString(0, "3FlagRed&Park");
 		flag3RedPark();
-	case 7:
+	case 9:
 		displayLCDCenteredString(0, "3FlagBlue&Park");
 		flag3BluePark();
-	case 8:
+	case 10:
 		displayLCDCenteredString(0, "test");
 		testing();
 	default:
@@ -948,17 +1148,35 @@ void wristToggleMovement(bool e){
 }
 
 void driveTrain(){
+	
+		if(vexRT[Btn7D] == 1)
+	{
+			waitUntil(vexRT[Btn7D] == 0);
+			drivePos = !drivePos;
+		
+	}
+
+	if(drivePos){
 	motor[frontLeft] = vexRT[Ch2];
 	motor[backLeft] = vexRT[Ch2];
 
 	motor[frontRight] = vexRT[Ch3];
 	motor[backRight] = vexRT[Ch3];
-}
+	}
+	else {
+		motor[frontLeft] = -1 * vexRT[Ch3];
+	motor[backLeft] = -1 * vexRT[Ch3];
 
+	motor[frontRight] = -1 * vexRT[Ch2];
+	motor[backRight] = -1 * vexRT[Ch2];
+	}
+	
+}
+/*
 void straightDrive(){
 	//up button drives perfectly forward
 	//down button drives perfectly backward
-	//when nothing is pressed, drive is still, so no annoying motor humming (:
+
 
 	if(vexRT[Btn7U] == 1) {
 		motor[backLeft] = 90;
@@ -977,8 +1195,9 @@ void straightDrive(){
 		motor[frontRight] = 0;
 	}
 
-}
 
+}
+*/
 void rollerMove(){
 	if(vexRT[Btn5U] == 1) {
 		motor[roller] = 127;
@@ -988,6 +1207,7 @@ void rollerMove(){
 		motor[roller] = 0;
 	}
 }
+/*
 void slowFourBar(){
 	//only works when fourbar is holding cap, so we can slowly lower it
 	if(fourBarBool){
@@ -1002,6 +1222,7 @@ void slowFourBar(){
 	}
 }
 
+*/
 void fourBarMove(){
 	if(vexRT[Btn5UXmtr2] == 1) {
 		//down
@@ -1011,7 +1232,6 @@ void fourBarMove(){
 		motor[fourbar] = 127;
 		fourBarBool = true;
 		} else {
-
 		if(fourBarBool){
 			motor[fourbar] = 15;
 		}
@@ -1088,7 +1308,7 @@ void regularRemote(){
 
 	//tanvis
 	mainLift();
-	slowFourBar();
+//	slowFourBar();
 	fourBarMove();
 
 }
@@ -1127,8 +1347,6 @@ void displayBattery(){
 	displayLCDString(1, 0, "Backup: ");
 	sprintf(backupBattery, "%1.2f%c", SensorValue[power] / 280.0, 'V');    //Build the value to be displayed
 	displayNextLCDString(backupBattery);
-
-	wait1Msec(10);
 
 }
 
