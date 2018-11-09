@@ -40,6 +40,9 @@ string mainBattery, backupBattery;
 
 bool wristPressed = false;
 bool wristStatus = false;
+
+int liftPressed = 0;
+
 bool fourBarBool = true;
 bool drivePos = true;
 //deafult false cause flip out mech starts it there
@@ -1253,8 +1256,10 @@ void mainLift(){
 		motor[liftRight] = -127;
 		motor[liftLeft] = -127;
 		} else {
+		if(liftPressed == 0){
 		motor[liftRight] = 0;
 		motor[liftLeft] = 0;
+	}
 	}
 }
 void puncherMove(){
@@ -1264,6 +1269,43 @@ void puncherMove(){
 		motor[puncher] = 127;
 		} else {
 		motor[puncher] = 0;
+	}
+}
+
+
+void liftHeightPreset(int i){
+		if(SensorValue[liftE] < i){
+		motor[liftRight] = 127;
+		motor[liftLeft] = 127;
+		while(SensorValue[liftE] < i){	
+		}
+		motor[liftRight] = 0;
+		motor[liftLeft] = 0;
+		wait1Msec(100);
+		
+		motor[liftRight] = -30;
+		motor[liftLeft] = -30;
+		while(SensorValue[liftE] > i){	
+		}
+		motor[liftRight] = 0;
+		motor[liftLeft] = 0;	
+	}
+	else {
+		
+	motor[liftRight] = -90;
+		motor[liftLeft] = -90;
+		while(SensorValue[liftE] > i){	
+		}
+		motor[liftRight] = 0;
+		motor[liftLeft] = 0;
+		wait1Msec(100);
+		
+		motor[liftRight] = 20;
+		motor[liftLeft] = 20;
+		while(SensorValue[liftE] < i){	
+		}
+		motor[liftRight] = 0;
+		motor[liftLeft] = 0;	
 	}
 }
 
@@ -1279,6 +1321,27 @@ void wristToggleCheck(){
 	}
 
 }
+
+void liftCheck(){
+	// check for a button press only if we are not already pressed.
+	if(vexRT[Btn8UXmtr2] == 1)
+	{
+		
+		if(liftPressed == 0){
+			waitUntil(vexRT[Btn8UXmtr2] == 0);
+			liftPressed = 1;
+		}
+	}
+	else if(vexRT[Btn8DXmtr2] == 1)
+	{
+		if(liftPressed == 0){
+			waitUntil(vexRT[Btn8DXmtr2] == 0);
+			liftPressed = 2;
+		}
+	}
+
+}
+
 
 void resetAuton(){
 	if(nLCDButtons == centerButton){
@@ -1316,6 +1379,7 @@ void regularRemote(){
 void otherFunc(){
 	//toggles and special stuff
 	wristToggleCheck();
+	liftCheck();
 
 	//LCD and other display stuff
 	//reset values for trying auton
@@ -1325,6 +1389,22 @@ void otherFunc(){
 }
 
 
+task liftHeight(){
+	while(true){
+	if(liftPressed == 1){
+			liftHeightPreset(100);
+			liftPressed = 0;
+	}
+	else if(liftPressed == 2){
+		liftHeightPreset(63);
+				liftPressed = 0;
+		
+		}
+	
+	wait1Msec(15);
+}
+}
+
 task wristM(){
 	while(true){
 		if(wristPressed){
@@ -1332,6 +1412,17 @@ task wristM(){
 			wristToggleMovement(wristStatus);
 			//run wrist function goes here^
 		}
+		/*
+	if(liftPressed == 1){
+			liftHeightPreset(52);
+			liftPressed = 0;
+	}
+	else if(liftPressed == 2){
+		liftHeightPreset(90);
+				liftPressed = 0;
+		
+		}
+		*/
 		wait1Msec(20);
 	}
 }
@@ -1365,7 +1456,8 @@ task usercontrol()
 {
 	//wristToggle Task
 	startTask(wristM);
-
+	startTask(liftHeight);
+	
 	clearAll();
 	while (true) {
 		//Main Controls for Everything
@@ -1390,4 +1482,5 @@ task usercontrol()
 		wait1Msec(10);
 	}
 	stopTask(wristM);
+	stopTask(liftHeight);
 }
