@@ -550,7 +550,7 @@ void testing(){/*
 	//initDPid(-175);
 	driveFwd(-127, -127, -175);
 	clearAll();
-	
+
 
 	wait1Msec(20000);
 	*/
@@ -675,7 +675,7 @@ void flag3Red(){
 	stopDrive();
 	wait1Msec(100);
 	clearAll();
-	driveFwd(-50, -50, -80);
+	driveFwd(-50, -50, -40);
 	clearAll();
 	wait1Msec(500);
 	motor[puncher] = 0;
@@ -684,7 +684,7 @@ void flag3Red(){
 	motor[roller] = -127;
 	motor[puncher] = 127;
 	clearAll();
-	driveFwd(50, 50, 470);
+	driveFwd(50, 50, 430);
 	clearAll();
 
 	wait1Msec(1500);
@@ -692,7 +692,7 @@ void flag3Red(){
 
 	motor[roller] = 0;
 	clearAll();
-	driveFwd(50, 50, 300);
+	driveFwd(50, 50, 220);
 	clearAll();
 
 	//left turn to hit flag
@@ -702,7 +702,7 @@ void flag3Red(){
 	stopDrive();
 	wait1Msec(200);
 	clearDrive();
-	driveFwd(127, 127, 175);
+	driveFwd(127, 127, 190);
 	wait1Msec(200);
 	clearAll();
 	wait1Msec(10000);
@@ -718,13 +718,13 @@ void flag3Blue(){
 	driveFwd(60, 60, 860);
 	wait1Msec(700);
 	clearAll();
-	driveFwd(-100, -100, -350);
+	driveFwd(-100, -100, -260);
 	motor[roller] = 0;
-	driveFwd(-100, -100, -380);
+	driveFwd(-100, -100, -500);
 	wait1Msec(200);
 	driveMove(50, -50);
 	motor[puncher] = 90;
-	while(SensorValue[gyro] > -730){
+	while(SensorValue[gyro] > -760){
 		//	if(SensorValue[gyro] < -100){
 		//		motor[puncher] = 127;
 		//		}
@@ -732,16 +732,16 @@ void flag3Blue(){
 	stopDrive();
 	wait1Msec(100);
 	clearAll();
-	driveFwd(-50, -50, -80);
+	driveFwd(-50, -50, -20);
 	clearAll();
-	wait1Msec(500);
+	wait1Msec(800);
 	motor[puncher] = 0;
 
 	//second ball
 	motor[roller] = -127;
 	motor[puncher] = 127;
 	clearAll();
-	driveFwd(50, 50, 470);
+	driveFwd(50, 50, 340);
 	clearAll();
 
 	wait1Msec(1500);
@@ -749,7 +749,7 @@ void flag3Blue(){
 
 	motor[roller] = 0;
 	clearAll();
-	driveFwd(50, 50, 270);
+	driveFwd(50, 50, 240);
 	clearAll();
 
 	//left turn to hit flag
@@ -759,7 +759,7 @@ void flag3Blue(){
 	stopDrive();
 	wait1Msec(200);
 	clearDrive();
-	driveFwd(80, 80, 205);
+	driveFwd(80, 80, 150);
 	wait1Msec(200);
 	clearAll();
 	//driving back
@@ -771,12 +771,12 @@ void flag3Blue(){
 void flag3RedEnd(){
 	motor[roller] = -127;
 	clearAll();
-	driveFwd(65, 65, 860);
+	driveFwd(65, 65, 840);
 	wait1Msec(700);
 	clearAll();
-	driveFwd(-100, -100, -325);
+	driveFwd(-100, -100, -200);
 	motor[roller] = 0;
-	driveFwd(-100, -100, -430);
+	driveFwd(-100, -100, -545);
 	wait1Msec(200);
 	driveMove(-50, 50);
 	motor[puncher] = 127;
@@ -786,16 +786,16 @@ void flag3RedEnd(){
 	stopDrive();
 	wait1Msec(100);
 	clearAll();
-	driveFwd(-50, -50, -80);
+	driveFwd(-50, -50, -40);
 	clearAll();
-	wait1Msec(500);
+	wait1Msec(750);
 	motor[puncher] = 0;
 
 	//second ball
 	motor[roller] = -127;
 	motor[puncher] = 127;
 	clearAll();
-	driveFwd(50, 50, 470);
+	driveFwd(50, 50, 430);
 	clearAll();
 
 	wait1Msec(1500);
@@ -803,9 +803,9 @@ void flag3RedEnd(){
 
 	motor[roller] = 0;
 	clearAll();
-	driveFwd(50, 50, 300);
+	driveFwd(50, 50, 100);
 	clearAll();
-
+	
 	//left turn to hit flag
 	driveMove(-60, 60);
 	while(SensorValue[gyro] < 975){
@@ -813,7 +813,7 @@ void flag3RedEnd(){
 	stopDrive();
 	wait1Msec(200);
 	clearDrive();
-	driveFwd(127, 127, 175);
+	driveFwd(127, 127, 250);
 	wait1Msec(200);
 	clearAll();
 	//driving back
@@ -831,7 +831,7 @@ void flag3RedEnd(){
 	motor[roller] = 0;
 	wait1Msec(200);
 	clearAll();
-	driveFwd(-120, -120, -300);
+	driveFwd(-120, -120, -285);
 	clearAll();
 	wait1Msec(100);
 	driveMove(-60, 60);
@@ -850,13 +850,13 @@ void flag3BlueEnd(){
 	driveFwd(60, 60, 860);
 	wait1Msec(700);
 	clearAll();
-	driveFwd(-100, -100, -350);
+	driveFwd(-100, -100, -200);
 	motor[roller] = 0;
-	driveFwd(-100, -100, -380);
+	driveFwd(-100, -100, -535);
 	wait1Msec(200);
 	driveMove(50, -50);
 	motor[puncher] = 90;
-	while(SensorValue[gyro] > -730){
+	while(SensorValue[gyro] > -760){
 		//	if(SensorValue[gyro] < -100){
 		//		motor[puncher] = 127;
 		//		}
@@ -864,16 +864,16 @@ void flag3BlueEnd(){
 	stopDrive();
 	wait1Msec(100);
 	clearAll();
-	driveFwd(-50, -50, -80);
+	driveFwd(-50, -50, -35);
 	clearAll();
-	wait1Msec(500);
+	wait1Msec(800);
 	motor[puncher] = 0;
 
 	//second ball
 	motor[roller] = -127;
 	motor[puncher] = 127;
 	clearAll();
-	driveFwd(50, 50, 470);
+	driveFwd(50, 50, 340);
 	clearAll();
 
 	wait1Msec(1500);
@@ -881,7 +881,8 @@ void flag3BlueEnd(){
 
 	motor[roller] = 0;
 	clearAll();
-	driveFwd(50, 50, 270);
+
+	driveFwd(50, 50, 240);
 	clearAll();
 
 	//right turn to hit flag
@@ -891,7 +892,7 @@ void flag3BlueEnd(){
 	stopDrive();
 	wait1Msec(200);
 	clearDrive();
-	driveFwd(80, 80, 205);
+	driveFwd(80, 80, 220);
 	wait1Msec(200);
 	clearAll();
 	//driving back
@@ -909,7 +910,7 @@ void flag3BlueEnd(){
 	motor[roller] = 0;
 	wait1Msec(200);
 	clearAll();
-	driveFwd(-120, -120, -300);
+	driveFwd(-120, -120, -250);
 	clearAll();
 	wait1Msec(100);
 	driveMove(60, -60);
@@ -1151,12 +1152,12 @@ void wristToggleMovement(bool e){
 }
 
 void driveTrain(){
-	
+
 		if(vexRT[Btn7D] == 1)
 	{
 			waitUntil(vexRT[Btn7D] == 0);
 			drivePos = !drivePos;
-		
+
 	}
 
 	if(drivePos){
@@ -1173,7 +1174,7 @@ void driveTrain(){
 	motor[frontRight] = -1 * vexRT[Ch2];
 	motor[backRight] = -1 * vexRT[Ch2];
 	}
-	
+
 }
 /*
 void straightDrive(){
@@ -1277,35 +1278,35 @@ void liftHeightPreset(int i){
 		if(SensorValue[liftE] < i){
 		motor[liftRight] = 127;
 		motor[liftLeft] = 127;
-		while(SensorValue[liftE] < i){	
+		while(SensorValue[liftE] < i){
 		}
 		motor[liftRight] = 0;
 		motor[liftLeft] = 0;
 		wait1Msec(100);
-		
+
 		motor[liftRight] = -30;
 		motor[liftLeft] = -30;
-		while(SensorValue[liftE] > i){	
+		while(SensorValue[liftE] > i){
 		}
 		motor[liftRight] = 0;
-		motor[liftLeft] = 0;	
+		motor[liftLeft] = 0;
 	}
 	else {
-		
+
 	motor[liftRight] = -90;
 		motor[liftLeft] = -90;
-		while(SensorValue[liftE] > i){	
+		while(SensorValue[liftE] > i){
 		}
 		motor[liftRight] = 0;
 		motor[liftLeft] = 0;
 		wait1Msec(100);
-		
+
 		motor[liftRight] = 20;
 		motor[liftLeft] = 20;
-		while(SensorValue[liftE] < i){	
+		while(SensorValue[liftE] < i){
 		}
 		motor[liftRight] = 0;
-		motor[liftLeft] = 0;	
+		motor[liftLeft] = 0;
 	}
 }
 
@@ -1326,7 +1327,7 @@ void liftCheck(){
 	// check for a button press only if we are not already pressed.
 	if(vexRT[Btn8UXmtr2] == 1)
 	{
-		
+
 		if(liftPressed == 0){
 			waitUntil(vexRT[Btn8UXmtr2] == 0);
 			liftPressed = 1;
@@ -1398,9 +1399,9 @@ task liftHeight(){
 	else if(liftPressed == 2){
 		liftHeightPreset(63);
 				liftPressed = 0;
-		
+
 		}
-	
+
 	wait1Msec(15);
 }
 }
@@ -1420,7 +1421,7 @@ task wristM(){
 	else if(liftPressed == 2){
 		liftHeightPreset(90);
 				liftPressed = 0;
-		
+
 		}
 		*/
 		wait1Msec(20);
@@ -1457,7 +1458,7 @@ task usercontrol()
 	//wristToggle Task
 	startTask(wristM);
 	startTask(liftHeight);
-	
+
 	clearAll();
 	while (true) {
 		//Main Controls for Everything
