@@ -1,12 +1,47 @@
 #include "robot-config.h"
-/*---------------------------------------------------------------------------*/
-/*                                                                           */
-/*        Description: Competition template for VCS VEX V5                    */
-/*                                                                           */
-/*---------------------------------------------------------------------------*/
 
 //Creates a competition object that allows access to Competition methods.
 vex::competition    Competition;
+
+/*--------------------------------------------------------------------------
+Both:
+Joysticks - Tank Control
+A - Switch Drive Modes [Initially in Flags]
+
+Displays Drive Mode on Controller
+
+Flags: 
+Joystick - Intake Side as Forward
+R2 - Puncher Trigger [Once pressed, runs task to shoot puncher]
+R1 - 
+L2 - Intake In
+L1 - Intake Out
+
+Caps:
+Joystick - Cap Intake Side as Forward
+R2 - Lift Down
+R1 - Lift Up
+L2 - Cap Intake Trigger [Once pressed, runs task to flip cap]
+L1 - 
+Up - Cap Intake Up [Manual]
+Down - Cap Intake Down [Manual]
+
+
+--------------------------------------------------------------------------*/
+int maxSpeed = 100;
+//int test = 0;
+
+
+/* Drive Type: Var for what the controller is controlling
+true (initial) - Flags
+false - Caps
+*/
+
+//vars for trigger control
+bool driveType = true;
+bool puncherTrigger = false;
+bool capTrigger = false;
+//bool capResetTrigger = false;
 
 /*---------------------------------------------------------------------------*/
 /*                          Pre-Autonomous Functions                         */
@@ -24,16 +59,6 @@ void pre_auton( void ) {
   
 }
 
-/*---------------------------------------------------------------------------*/
-/*                                                                           */
-/*                              Autonomous Task                              */
-/*                                                                           */
-/*  This task is used to control your robot during the autonomous phase of   */
-/*  a VEX Competition.                                                       */
-/*                                                                           */
-/*  You must modify the code to add your own robot specific commands here.   */
-/*---------------------------------------------------------------------------*/
-
 void autonomous( void ) {
   // ..........................................................................
   // Insert autonomous user code here.
@@ -41,46 +66,243 @@ void autonomous( void ) {
 
 }
 
-/*---------------------------------------------------------------------------*/
-/*                                                                           */
-/*                              User Control Task                            */
-/*                                                                           */
-/*  This task is used to control your robot during the user control phase of */
-/*  a VEX Competition.                                                       */
-/*                                                                           */
-/*  You must modify the code to add your own robot specific commands here.   */
-/*---------------------------------------------------------------------------*/
+    void autoPuncher(){
+        //if in flag mode and puncher trigger is clicked
+        if(driveType && puncherTrigger){
+            Puncher.rotateFor(360,vex::rotationUnits::deg,127,vex::velocityUnits::pct);
+            puncherTrigger = false;
+        }
+    }
+    
+    void puncherTriggerDetect(){
+        if(driveType){
+            if(Controller1.ButtonR2.pressing()){
+            //wait until released
+               while(Controller1.ButtonR2.pressing()){
+                   vex::task::sleep(100);
+               }
+            //run func
+            puncherTrigger = true;
+            }  
+        }
+    }
+  
+
+    void autoCapFlip(){
+        //if in cap mode and cap trigger is clicked
+        if(!driveType && capTrigger){
+            CapIntake.rotateTo(-60,vex::rotationUnits::deg, 60,vex::velocityUnits::pct);
+            vex::task::sleep(350);
+            CapIntake.rotateTo(-315,vex::rotationUnits::deg, 60,vex::velocityUnits::pct);
+            capTrigger = false;
+        }
+    }
+
+      void capTriggerDetect(){
+            if(!driveType){
+                
+                //button for main cap flip
+                if(Controller1.ButtonUp.pressing()){
+                //wait until released
+                   while(Controller1.ButtonUp.pressing()){
+                       vex::task::sleep(100);
+                   }
+                //run func
+                capTrigger = true;
+                }  
+            }
+        }
+    void driveSwitch(void){
+        //if button A is pressed
+       if(Controller1.ButtonA.pressing()){
+           //wait until released
+           while(Controller1.ButtonA.pressing()){
+               vex::task::sleep(100);
+           }
+           //run func
+           driveType = !driveType;
+           
+           //test++;
+       }
+        
+    }
+
+    void otherTaskFunc(){
+        //the functions that run in this "othertask"
+        
+        //actions
+        autoPuncher();
+        autoCapFlip();
+        
+        //detections
+        driveSwitch();
+        capTriggerDetect();
+    }
+//other task used to run puncher and cap intake triggers
+    int otherTask(){
+        while(true){
+            otherTaskFunc();
+            Brain.Screen.clearScreen();
+            Brain.Screen.printAt(1, 40, "%d", capTrigger);
+            //Brain.Screen.printAt(1, 120, "%d", capResetTrigger);
+            Brain.Screen.printAt(1, 80, "%d", puncherTrigger);
+            //Brain.Screen.printAt(1, 120, "%d", test);
+
+            //to not waste resources
+            vex::task::sleep(20);
+        }
+        return 0;
+    }
+
+
+    void driveTrainControl(void){
+        if(driveType){
+            FrontLeft.spin(vex::directionType::fwd, Controller1.Axis3.value(), vex::velocityUnits::pct);
+            BackLeft.spin(vex::directionType::fwd, Controller1.Axis3.value(), vex::velocityUnits::pct);
+            FrontRight.spin(vex::directionType::fwd, Controller1.Axis2.value(), vex::velocityUnits::pct);
+            BackRight.spin(vex::directionType::fwd, Controller1.Axis2.value(), vex::velocityUnits::pct);
+        }
+        else {
+            FrontLeft.spin(vex::directionType::rev, Controller1.Axis2.value(), vex::velocityUnits::pct);
+            BackLeft.spin(vex::directionType::rev, Controller1.Axis2.value(), vex::velocityUnits::pct);
+            FrontRight.spin(vex::directionType::rev, Controller1.Axis3.value(), vex::velocityUnits::pct);
+            BackRight.spin(vex::directionType::rev, Controller1.Axis3.value(), vex::velocityUnits::pct);
+        }
+
+    }
+
+    //intake control for roller
+    //if drivetype is true, run shooting mode
+    void IntakeControl(void){
+        if(driveType){
+            if(Controller1.ButtonL2.pressing()){
+                Intake.spin(vex::directionType::fwd, (maxSpeed * .55), vex::velocityUnits::pct);
+            }
+            else if(Controller1.ButtonL1.pressing()){
+                Intake.spin(vex::directionType::rev, maxSpeed, vex::velocityUnits::pct);
+            }
+            else {
+                Intake.spin(vex::directionType::fwd, 0, vex::velocityUnits::pct);
+            }
+        }
+    }
+    
+    void PuncherControl(void){
+    //button
+        
+        if(driveType){
+        
+            if(!puncherTrigger){
+                if(Controller1.ButtonB.pressing()){
+                    Puncher.spin(vex::directionType::rev, maxSpeed / 3, vex::velocityUnits::pct);
+                }
+                else if(Controller1.ButtonX.pressing()){
+                    Puncher.spin(vex::directionType::fwd, maxSpeed, vex::velocityUnits::pct);
+                }
+                else {
+                    Puncher.stop(vex::brakeType::coast);
+                }
+                
+                
+            }
+/*
+            if(Controller1.ButtonR2.pressing()){
+            //wait until released
+               while(Controller1.ButtonR2.pressing()){
+                   vex::task::sleep(100);
+               }
+            //run func
+            puncherTrigger = true;
+            }
+            */
+
+        }
+    }
+    void LiftControl(void){
+    //preset heights
+        if(!driveType){
+            if(Controller1.ButtonR1.pressing()){
+                Lift.spin(vex::directionType::fwd, maxSpeed, vex::velocityUnits::pct);
+            }
+            else if(Controller1.ButtonR2.pressing()){
+                Lift.spin(vex::directionType::rev, maxSpeed, vex::velocityUnits::pct);
+            }
+            else
+                Lift.stop(vex::brakeType::hold);
+
+        }
+    
+    }
+    void CapIntakeControl(void){
+    //button
+       
+        if(!driveType){
+             
+            if(Controller1.ButtonL1.pressing()){
+                CapIntake.spin(vex::directionType::fwd, maxSpeed / 2, vex::velocityUnits::pct);
+            }
+            else if(Controller1.ButtonL2.pressing()){
+                CapIntake.spin(vex::directionType::rev, maxSpeed / 2, vex::velocityUnits::pct);
+            }
+            else if(!capTrigger){
+                //CapIntake.spin(vex::directionType::fwd, 0, vex::velocityUnits::pct);
+                CapIntake.stop(vex::brakeType::hold);
+             
+            } 
+            /*
+            //button for main cap flip
+            if(Controller1.ButtonUp.pressing()){
+            //wait until released
+               while(Controller1.ButtonUp.pressing()){
+                   vex::task::sleep(100);
+               }
+            //run func
+            capTrigger = true;
+            }
+            */
+        }
+    }
+
+    
+
+    void controllerDisplay(){
+        Controller1.Screen.clearScreen();
+            if(driveType)
+                Controller1.Screen.print("Flags");
+            else if(!driveType)
+                Controller1.Screen.print("              Caps");
+    }
+
+    void allRemoteFunc(void){
+        CapIntakeControl();
+        LiftControl();
+        PuncherControl();
+        IntakeControl();
+        driveTrainControl();
+        controllerDisplay();        
+    }
 
 void usercontrol( void ) {
   // User control code here, inside the loop
+  vex::task trigger(otherTask);
   while (1) {
-    // This is the main execution loop for the user control program.
-    // Each time through the loop your program should update motor + servo 
-    // values based on feedback from the joysticks.
-
-    // ........................................................................
-    // Insert user code here. This is where you use the joystick values to 
-    // update your motors, etc.
-    // ........................................................................
- 
+      allRemoteFunc();
     vex::task::sleep(20); //Sleep the task for a short amount of time to prevent wasted resources. 
   }
 }
 
-//
-// Main will set up the competition functions and callbacks.
-//
+
 int main() {
     
     //Run the pre-autonomous function. 
     pre_auton();
     
     //Set up callbacks for autonomous and driver control periods.
-    Competition.autonomous( autonomous );
-    Competition.drivercontrol( usercontrol );
+    Competition.autonomous(autonomous);
+    Competition.drivercontrol(usercontrol);
 
     //Prevent main from exiting with an infinite loop.                        
-    while(1) {
+    while(true) {
       vex::task::sleep(100);//Sleep the task for a short amount of time to prevent wasted resources.
     }    
        
