@@ -13,7 +13,7 @@ Displays Drive Mode on Controller
 Flags: 
 Joystick - Intake Side as Forward
 R2 - Puncher Trigger [Once pressed, runs task to shoot puncher]
-R1 - 
+R1 - Manual Puncher Control [Forward]
 L2 - Intake In
 L1 - Intake Out
 
@@ -21,10 +21,12 @@ Caps:
 Joystick - Cap Intake Side as Forward
 R2 - Lift Down
 R1 - Lift Up
-L2 - Cap Intake Trigger [Once pressed, runs task to flip cap]
-L1 - 
-Up - Cap Intake Up [Manual]
-Down - Cap Intake Down [Manual]
+L2 - Cap Intake Down [Manual]
+L1 - Cap Intake Up [Manual]
+Up - Cap Intake Trigger [Once pressed, runs task to flip cap]
+Down - 
+
+
 
 
 --------------------------------------------------------------------------*/
@@ -56,7 +58,13 @@ bool capTrigger = false;
 void pre_auton( void ) {
   // All activities that occur before the competition starts
   // Example: clearing encoders, setting servo positions, ...
-  
+    
+    //calibrate gyro
+    Gyro.startCalibration();
+        //wait until done calibrating
+    while(Gyro.isCalibrating()){
+        vex::task::sleep(100);
+    }
 }
 
 void autonomous( void ) {
@@ -70,6 +78,7 @@ void autonomous( void ) {
         //if in flag mode and puncher trigger is clicked
         if(driveType && puncherTrigger){
             Puncher.rotateFor(360,vex::rotationUnits::deg,127,vex::velocityUnits::pct);
+            Puncher.setTimeout(800, vex::timeUnits::msec);
             puncherTrigger = false;
         }
     }
@@ -86,14 +95,14 @@ void autonomous( void ) {
             }  
         }
     }
-  
 
     void autoCapFlip(){
         //if in cap mode and cap trigger is clicked
         if(!driveType && capTrigger){
             CapIntake.rotateTo(-60,vex::rotationUnits::deg, 60,vex::velocityUnits::pct);
             vex::task::sleep(350);
-            CapIntake.rotateTo(-315,vex::rotationUnits::deg, 60,vex::velocityUnits::pct);
+            CapIntake.rotateTo(-315,vex::rotationUnits::deg, 55,vex::velocityUnits::pct);
+            CapIntake.setTimeout(2000, vex::timeUnits::msec);
             capTrigger = false;
         }
     }
@@ -137,16 +146,26 @@ void autonomous( void ) {
         //detections
         driveSwitch();
         capTriggerDetect();
+        puncherTriggerDetect();
     }
 //other task used to run puncher and cap intake triggers
     int otherTask(){
         while(true){
             otherTaskFunc();
             Brain.Screen.clearScreen();
-            Brain.Screen.printAt(1, 40, "%d", capTrigger);
+            //Brain.Screen.printAt(1, 40, "%d", capTrigger);
             //Brain.Screen.printAt(1, 120, "%d", capResetTrigger);
-            Brain.Screen.printAt(1, 80, "%d", puncherTrigger);
+            //Brain.Screen.printAt(1, 80, "%d", puncherTrigger);
             //Brain.Screen.printAt(1, 120, "%d", test);
+            Brain.Screen.printAt(1, 15, "%d", Gyro.value(vex::analogUnits::pct));
+              Brain.Screen.printAt(1, 35, "%d", Gyro.value(vex::analogUnits::range8bit));
+              Brain.Screen.printAt(1, 55, "%d", Gyro.value(vex::analogUnits::range10bit));
+              Brain.Screen.printAt(1, 55, "%d", Gyro.value(vex::analogUnits::range12bit));
+              Brain.Screen.printAt(1, 75, "%d", Gyro.value(vex::analogUnits::mV));
+            
+              //Brain.Screen.printAt(1, 115, "%d", Gyro.value(vex::rotationUnits::deg));
+            
+              Brain.Screen.printAt(1, 155, "%d", Gyro.value(vex::percentUnits::pct));
 
             //to not waste resources
             vex::task::sleep(20);
@@ -154,6 +173,45 @@ void autonomous( void ) {
         return 0;
     }
 
+
+    void controllerDisplay(){
+            Controller1.Screen.clearScreen();
+                if(driveType)
+                    Controller1.Screen.print("Flags");
+                else if(!driveType)
+                    Controller1.Screen.print("              Caps");
+        }
+
+    void brainDisplay(){
+        Brain.Screen.clearScreen();
+            //Brain.Screen.printAt(1, 40, "%d", capTrigger);
+            //Brain.Screen.printAt(1, 120, "%d", capResetTrigger);
+            //Brain.Screen.printAt(1, 80, "%d", puncherTrigger);
+            //Brain.Screen.printAt(1, 120, "%d", test);
+            Brain.Screen.printAt(1, 15, "%d", Gyro.value(vex::analogUnits::pct));
+              Brain.Screen.printAt(1, 35, "%d", Gyro.value(vex::analogUnits::range8bit));
+              Brain.Screen.printAt(1, 55, "%d", Gyro.value(vex::analogUnits::range10bit));
+              Brain.Screen.printAt(1, 55, "%d", Gyro.value(vex::analogUnits::range12bit));
+              Brain.Screen.printAt(1, 75, "%d", Gyro.value(vex::analogUnits::mV));
+            
+              //Brain.Screen.printAt(1, 115, "%d", Gyro.value(vex::rotationUnits::deg));
+            
+              Brain.Screen.printAt(1, 155, "%d", Gyro.value(vex::percentUnits::pct));
+    }
+
+
+
+    //task only used to update brain and controller displays
+    int displayTask(){
+        while(true){
+            controllerDisplay();
+            brainDisplay();
+
+            //to not waste resources - 150 cause display doesn't need to be updated super fast
+            vex::task::sleep(150);
+        }
+        return 0;
+    }
 
     void driveTrainControl(void){
         if(driveType){
@@ -193,10 +251,10 @@ void autonomous( void ) {
         if(driveType){
         
             if(!puncherTrigger){
-                if(Controller1.ButtonB.pressing()){
+                if(Controller1.ButtonX.pressing()){
                     Puncher.spin(vex::directionType::rev, maxSpeed / 3, vex::velocityUnits::pct);
                 }
-                else if(Controller1.ButtonX.pressing()){
+                else if(Controller1.ButtonR1.pressing()){
                     Puncher.spin(vex::directionType::fwd, maxSpeed, vex::velocityUnits::pct);
                 }
                 else {
@@ -205,17 +263,6 @@ void autonomous( void ) {
                 
                 
             }
-/*
-            if(Controller1.ButtonR2.pressing()){
-            //wait until released
-               while(Controller1.ButtonR2.pressing()){
-                   vex::task::sleep(100);
-               }
-            //run func
-            puncherTrigger = true;
-            }
-            */
-
         }
     }
     void LiftControl(void){
@@ -263,30 +310,28 @@ void autonomous( void ) {
         }
     }
 
-    
-
-    void controllerDisplay(){
-        Controller1.Screen.clearScreen();
-            if(driveType)
-                Controller1.Screen.print("Flags");
-            else if(!driveType)
-                Controller1.Screen.print("              Caps");
-    }
 
     void allRemoteFunc(void){
         CapIntakeControl();
         LiftControl();
         PuncherControl();
         IntakeControl();
-        driveTrainControl();
-        controllerDisplay();        
+        driveTrainControl();      
     }
 
 void usercontrol( void ) {
   // User control code here, inside the loop
-  vex::task trigger(otherTask);
+    
+  //initiate task for triggers, like cap control and puncher button
+  vex::task trigger(otherTask, 1);
+  
+  //initiate task for brain and controller displays
+  vex::task display(displayTask, 2);
+    
   while (1) {
       allRemoteFunc();
+      
+                       
     vex::task::sleep(20); //Sleep the task for a short amount of time to prevent wasted resources. 
   }
 }
