@@ -1,10 +1,10 @@
 vex::brain Brain;
-vex::motor FrontLeft = vex::motor(vex::PORT15, vex::gearSetting::ratio18_1, true);
-vex::motor BackLeft = vex::motor(vex::PORT16, vex::gearSetting::ratio18_1, true);
-vex::motor FrontRight = vex::motor(vex::PORT20, vex::gearSetting::ratio18_1);
-vex::motor BackRight = vex::motor(vex::PORT19, vex::gearSetting::ratio18_1);
+vex::motor FrontLeft = vex::motor(vex::PORT15, vex::gearSetting::ratio18_1);
+vex::motor BackLeft = vex::motor(vex::PORT16, vex::gearSetting::ratio18_1);
+vex::motor FrontRight = vex::motor(vex::PORT20, vex::gearSetting::ratio18_1, true);
+vex::motor BackRight = vex::motor(vex::PORT19, vex::gearSetting::ratio18_1, true);
 vex::motor Intake = vex::motor(vex::PORT18, vex::gearSetting::ratio6_1);
-vex::motor Puncher = vex::motor(vex::PORT17, vex::gearSetting::ratio36_1);
+vex::motor Puncher = vex::motor(vex::PORT17, vex::gearSetting::ratio36_1, true);
 vex::motor Lift = vex::motor(vex::PORT9, vex::gearSetting::ratio18_1);
 vex::motor CapIntake = vex::motor(vex::PORT10, vex::gearSetting::ratio18_1);
 vex::controller Controller1 = vex::controller();
