@@ -8,6 +8,7 @@ Both:
 Joysticks - Tank Control
 A - Switch Drive Modes [Initially in Flags]
 
+
 Displays Drive Mode on Controller
 
 Flags: 
@@ -31,6 +32,7 @@ Down -
 
 --------------------------------------------------------------------------*/
 int maxSpeed = 100;
+
 //int test = 0;
 
 
@@ -43,8 +45,7 @@ false - Caps
 bool driveType = true;
 bool puncherTrigger = false;
 bool capTrigger = false;
-//bool capResetTrigger = false;
-
+bool driveLockOn = false;
 /*---------------------------------------------------------------------------*/
 /*                          Pre-Autonomous Functions                         */
 /*                                                                           */
@@ -136,6 +137,37 @@ void autonomous( void ) {
         
     }
 
+    void driveLock(bool z){
+        // if z is true, lock is turned on
+        // else, it's turned off
+        
+        if(z){
+            FrontLeft.stop(vex::brakeType::hold);
+            BackLeft.stop(vex::brakeType::hold);
+            FrontRight.stop(vex::brakeType::hold);
+            BackRight.stop(vex::brakeType::hold);  
+        }
+        else if(!z) {
+            FrontLeft.stop(vex::brakeType::coast);
+            BackLeft.stop(vex::brakeType::coast);
+            FrontRight.stop(vex::brakeType::coast);
+            BackRight.stop(vex::brakeType::coast);
+        }
+
+    }
+
+    void driveLockDetect(){
+        if(Controller1.ButtonB.pressing()){
+           //wait until released
+           while(Controller1.ButtonB.pressing()){
+               vex::task::sleep(100);
+           }
+           //run func
+            driveLockOn = !driveLockOn;
+           driveLock(driveLockOn);
+       }
+    }
+
     void otherTaskFunc(){
         //the functions that run in this "othertask"
         
@@ -144,29 +176,22 @@ void autonomous( void ) {
         autoCapFlip();
         
         //detections
+        //switch drive into cap mode
         driveSwitch();
+        
+        //auto flip for cap
         capTriggerDetect();
+        
+        //puncher auto button
         puncherTriggerDetect();
+        
+        //drive lock for platform
+        driveLockDetect();
     }
 //other task used to run puncher and cap intake triggers
     int otherTask(){
         while(true){
             otherTaskFunc();
-            Brain.Screen.clearScreen();
-            //Brain.Screen.printAt(1, 40, "%d", capTrigger);
-            //Brain.Screen.printAt(1, 120, "%d", capResetTrigger);
-            //Brain.Screen.printAt(1, 80, "%d", puncherTrigger);
-            //Brain.Screen.printAt(1, 120, "%d", test);
-            Brain.Screen.printAt(1, 15, "%d", Gyro.value(vex::analogUnits::pct));
-              Brain.Screen.printAt(1, 35, "%d", Gyro.value(vex::analogUnits::range8bit));
-              Brain.Screen.printAt(1, 55, "%d", Gyro.value(vex::analogUnits::range10bit));
-              Brain.Screen.printAt(1, 55, "%d", Gyro.value(vex::analogUnits::range12bit));
-              Brain.Screen.printAt(1, 75, "%d", Gyro.value(vex::analogUnits::mV));
-            
-              //Brain.Screen.printAt(1, 115, "%d", Gyro.value(vex::rotationUnits::deg));
-            
-              Brain.Screen.printAt(1, 155, "%d", Gyro.value(vex::percentUnits::pct));
-
             //to not waste resources
             vex::task::sleep(20);
         }
@@ -176,10 +201,25 @@ void autonomous( void ) {
 
     void controllerDisplay(){
             Controller1.Screen.clearScreen();
-                if(driveType)
+                if(driveType){
+                    Controller1.Screen.setCursor(1,1);
                     Controller1.Screen.print("Flags");
-                else if(!driveType)
-                    Controller1.Screen.print("              Caps");
+                }
+                else if(!driveType){
+                    Controller1.Screen.setCursor(1,17);
+                    //Controller1.Screen.print("              Caps");
+                    Controller1.Screen.print("Caps");
+                }
+        
+                if(driveLockOn){
+                    Controller1.Screen.setCursor(20,1);
+                    Controller1.Screen.print("On");
+                }
+                else if(!driveLockOn){
+                    Controller1.Screen.setCursor(20, 18);
+                    //Controller1.Screen.print("               Off");
+                    Controller1.Screen.print("Off");
+                }
         }
 
     void brainDisplay(){
@@ -206,19 +246,27 @@ void autonomous( void ) {
         while(true){
             controllerDisplay();
             brainDisplay();
-
             //to not waste resources - 150 cause display doesn't need to be updated super fast
             vex::task::sleep(150);
         }
         return 0;
     }
 
+    
     void driveTrainControl(void){
+        
+        //lock drive if joysticks not moved
+      /*  if((abs(Controller1.Axis2.value()) < 15) && (abs(Controller1.Axis3.value()) < 15)) {
+            driveLock(true);     
+        }
+        */
+        //else
         if(driveType){
             FrontLeft.spin(vex::directionType::fwd, Controller1.Axis3.value(), vex::velocityUnits::pct);
             BackLeft.spin(vex::directionType::fwd, Controller1.Axis3.value(), vex::velocityUnits::pct);
             FrontRight.spin(vex::directionType::fwd, Controller1.Axis2.value(), vex::velocityUnits::pct);
             BackRight.spin(vex::directionType::fwd, Controller1.Axis2.value(), vex::velocityUnits::pct);
+            
         }
         else {
             FrontLeft.spin(vex::directionType::rev, Controller1.Axis2.value(), vex::velocityUnits::pct);
@@ -226,7 +274,6 @@ void autonomous( void ) {
             FrontRight.spin(vex::directionType::rev, Controller1.Axis3.value(), vex::velocityUnits::pct);
             BackRight.spin(vex::directionType::rev, Controller1.Axis3.value(), vex::velocityUnits::pct);
         }
-
     }
 
     //intake control for roller
@@ -240,7 +287,7 @@ void autonomous( void ) {
                 Intake.spin(vex::directionType::rev, maxSpeed, vex::velocityUnits::pct);
             }
             else {
-                Intake.spin(vex::directionType::fwd, 0, vex::velocityUnits::pct);
+                Intake.stop(vex::brakeType::coast);
             }
         }
     }
@@ -258,7 +305,8 @@ void autonomous( void ) {
                     Puncher.spin(vex::directionType::fwd, maxSpeed, vex::velocityUnits::pct);
                 }
                 else {
-                    Puncher.stop(vex::brakeType::coast);
+                    //Puncher.stop(vex::brakeType::hold);
+                    Puncher.stop(vex::brakeType::brake);
                 }
                 
                 
@@ -275,7 +323,8 @@ void autonomous( void ) {
                 Lift.spin(vex::directionType::rev, maxSpeed, vex::velocityUnits::pct);
             }
             else
-                Lift.stop(vex::brakeType::hold);
+                Lift.stop(vex::brakeType::brake);
+               // Lift.stop(vex::brakeType::coast);
 
         }
     
