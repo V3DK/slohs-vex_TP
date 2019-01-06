@@ -41,11 +41,14 @@ true (initial) - Flags
 false - Caps
 */
 
+float math_Pi = 3.1415926535897932384626433;
+
 //vars for trigger control
 bool driveType = true;
 bool puncherTrigger = false;
 bool capTrigger = false;
 bool driveLockOn = false;
+bool liftReset = false;
 /*---------------------------------------------------------------------------*/
 /*                          Pre-Autonomous Functions                         */
 /*                                                                           */
@@ -66,19 +69,245 @@ void pre_auton( void ) {
     while(Gyro.isCalibrating()){
         vex::task::sleep(100);
     }
+    vex::task::sleep(1000);
+
+    
 }
+    
+    void driveLock(bool z){
+        // if z is true, lock is turned on
+        // else, it's turned off
+        
+        if(z){
+            FrontLeft.stop(vex::brakeType::hold);
+            BackLeft.stop(vex::brakeType::hold);
+            FrontRight.stop(vex::brakeType::hold);
+            BackRight.stop(vex::brakeType::hold);  
+        }
+        else if(!z) {
+            FrontLeft.stop(vex::brakeType::coast);
+            BackLeft.stop(vex::brakeType::coast);
+            FrontRight.stop(vex::brakeType::coast);
+            BackRight.stop(vex::brakeType::coast);
+        }
+
+    }
+
+    void resetDrive(){
+        FrontLeft.resetRotation();
+        BackLeft.resetRotation();
+        FrontRight.resetRotation();
+        BackRight.resetRotation();
+    }
+    //d in inches
+    //s speed - in pct out of %100
+    void driveMoveFor(float d, int s){
+        resetDrive();
+        driveLock(false);
+        float revo = d / (4 * math_Pi);
+        FrontLeft.rotateFor(revo, vex::rotationUnits::rev, s, vex::velocityUnits::pct, false);
+        BackLeft.rotateFor(revo, vex::rotationUnits::rev, s, vex::velocityUnits::pct, false);
+        FrontRight.rotateFor(revo, vex::rotationUnits::rev, s, vex::velocityUnits::pct, false);
+        BackRight.rotateFor(revo, vex::rotationUnits::rev, s, vex::velocityUnits::pct, true);
+        //driveLock(true);
+    }
+    
+    //left dist in inches - negative for backwards
+    //right dist in inches
+    //left speed in pct
+    //right speed in pct
+    void driveTurnFor(float leftdist, float rightddist, int leftSpeed, int rightSpeed){
+        resetDrive();
+        driveLock(true);
+        float Lrevo = leftdist / (4 * math_Pi);
+        float Rrevo = rightddist / (4 * math_Pi);
+        FrontLeft.rotateFor(Lrevo, vex::rotationUnits::rev, leftSpeed, vex::velocityUnits::pct, false);
+        BackLeft.rotateFor(Lrevo, vex::rotationUnits::rev, leftSpeed, vex::velocityUnits::pct, false);
+        FrontRight.rotateFor(Rrevo, vex::rotationUnits::rev, rightSpeed, vex::velocityUnits::pct, false);
+        BackRight.rotateFor(Rrevo, vex::rotationUnits::rev, rightSpeed, vex::velocityUnits::pct, true);
+        driveLock(true);
+    }
+
+    void driveTimeout(float leftTime, float rightTime){
+        FrontLeft.setTimeout(leftTime, vex::timeUnits::sec);
+        BackLeft.setTimeout(leftTime, vex::timeUnits::sec);
+        FrontRight.setTimeout(rightTime, vex::timeUnits::sec);
+        BackRight.setTimeout(rightTime, vex::timeUnits::sec);
+    }
+
+    void flag3Red(){
+        resetDrive();
+        //start intake
+        Intake.spin(vex::directionType::fwd, (maxSpeed * .20), vex::velocityUnits::pct);
+        
+        //run drive forward for 34 inches
+        driveMoveFor(36.5, 75);
+        driveTimeout(3, 3);
+        //delay and wait for .7 of a second
+        vex::task::sleep(350);
+        //stop intake
+        Intake.stop(vex::brakeType::coast); 
+        //vex::task::sleep(200);
+        
+        //drive back 36 inches
+        //driveMoveFor(-36, 75);
+        driveMoveFor(-46, 75);
+        driveTimeout(3, 3);
+        //run with timing to realign against field wall
+        resetDrive();
+        //vex::task::sleep(200);
+        //drive forward 5 inches for flag alignment before turning
+        driveMoveFor(10, 35);
+        driveTimeout(1, 1);
+        //vex::task::sleep(200);
+        //driveTurnFor(-10.5, 10.5, 30, 30);
+        FrontLeft.spin(vex::directionType::rev, 50, vex::velocityUnits::pct);
+        BackLeft.spin(vex::directionType::rev, 50, vex::velocityUnits::pct);
+        BackRight.spin(vex::directionType::fwd, 50, vex::velocityUnits::pct);
+        FrontRight.spin(vex::directionType::fwd, 50, vex::velocityUnits::pct);
+        int curr = Gyro.value(vex::analogUnits::range8bit);
+        while(((Gyro.value(vex::analogUnits::range8bit)) - curr) > -51){
+           vex::task::sleep(10); 
+        }
+        FrontLeft.stop(vex::brakeType::hold);
+        BackLeft.stop(vex::brakeType::hold);
+        BackRight.stop(vex::brakeType::hold);
+        FrontRight.stop(vex::brakeType::hold);
+        driveTimeout(1, 1);
+        
+        Puncher.rotateFor(360, vex::rotationUnits::deg,100,vex::velocityUnits::pct, false);
+        Puncher.setTimeout(1, vex::timeUnits::sec);
+        
+        vex::task::sleep(250);
+        FrontLeft.stop(vex::brakeType::coast);
+        BackLeft.stop(vex::brakeType::coast);
+        BackRight.stop(vex::brakeType::coast);
+        FrontRight.stop(vex::brakeType::coast);
+
+        driveMoveFor(2, 50);
+        driveTimeout(1, 1);
+        vex::task::sleep(100);
+        Intake.rotateFor(3, vex::rotationUnits::rev, (maxSpeed * .66), vex::velocityUnits::pct, false);
+        driveMoveFor(21, 65);
+        //second shot
+        Puncher.rotateFor(360, vex::rotationUnits::deg,100,vex::velocityUnits::pct);
+        driveTimeout(1.5, 1.5);
+        vex::task::sleep(100);
+        Intake.spin(vex::directionType::fwd, (maxSpeed * .75), vex::velocityUnits::pct);
+        
+        //vex::task::sleep(2000);
+        //turn for low flags
+        curr = Gyro.value(vex::analogUnits::range8bit);
+        FrontLeft.spin(vex::directionType::rev, 30, vex::velocityUnits::pct);
+        BackLeft.spin(vex::directionType::rev, 30, vex::velocityUnits::pct);
+        BackRight.spin(vex::directionType::fwd, 30, vex::velocityUnits::pct);
+        FrontRight.spin(vex::directionType::fwd, 30, vex::velocityUnits::pct);
+        
+        while(((Gyro.value(vex::analogUnits::range8bit)) - curr) > -7){
+        } 
+        
+        FrontLeft.stop(vex::brakeType::hold);
+        BackLeft.stop(vex::brakeType::hold);
+        BackRight.stop(vex::brakeType::hold);
+        FrontRight.stop(vex::brakeType::hold);
+        driveTimeout(1, 1);    
+        vex::task::sleep(250);
+        FrontLeft.stop(vex::brakeType::coast);
+        BackLeft.stop(vex::brakeType::coast);
+        BackRight.stop(vex::brakeType::coast);
+        FrontRight.stop(vex::brakeType::coast);
+        
+        driveMoveFor(5, 50);
+        FrontLeft.spin(vex::directionType::fwd, 50, vex::velocityUnits::pct);
+        BackLeft.spin(vex::directionType::fwd, 50, vex::velocityUnits::pct);
+        BackRight.spin(vex::directionType::rev, 50, vex::velocityUnits::pct);
+        FrontRight.spin(vex::directionType::rev, 50, vex::velocityUnits::pct);
+        curr = Gyro.value(vex::analogUnits::range8bit);
+        
+        while(((Gyro.value(vex::analogUnits::range8bit)) - curr) < 7){
+        }
+        
+        FrontLeft.stop(vex::brakeType::hold);
+        BackLeft.stop(vex::brakeType::hold);
+        BackRight.stop(vex::brakeType::hold);
+        FrontRight.stop(vex::brakeType::hold);
+        driveTimeout(1, 1);    
+        vex::task::sleep(250);
+        FrontLeft.stop(vex::brakeType::coast);
+        BackLeft.stop(vex::brakeType::coast);
+        BackRight.stop(vex::brakeType::coast);
+        FrontRight.stop(vex::brakeType::coast);
+        driveMoveFor(23, 75);
+        vex::task::sleep(100);
+        driveMoveFor(-19, 75);
+        CapIntake.rotateTo(0,vex::rotationUnits::deg, 80,vex::velocityUnits::pct, false);
+        Lift.rotateTo(0, vex::rotationUnits::deg, 85,vex::velocityUnits::pct);
+            
+        
+        //Puncher.rotateFor(150, vex::rotationUnits::deg, 100, vex::velocityUnits::pct, false);
+
+        FrontLeft.spin(vex::directionType::fwd, 50, vex::velocityUnits::pct);
+        BackLeft.spin(vex::directionType::fwd, 50, vex::velocityUnits::pct);
+        BackRight.spin(vex::directionType::rev, 50, vex::velocityUnits::pct);
+        FrontRight.spin(vex::directionType::rev, 50, vex::velocityUnits::pct);
+ 
+        curr = Gyro.value(vex::analogUnits::range8bit);
+        while(((Gyro.value(vex::analogUnits::range8bit)) - curr) < 62){
+           vex::task::sleep(10); 
+        }
+        FrontLeft.stop(vex::brakeType::hold);
+        BackLeft.stop(vex::brakeType::hold);
+        BackRight.stop(vex::brakeType::hold);
+        FrontRight.stop(vex::brakeType::hold);
+        Puncher.stop(vex::brakeType::hold);
+        driveTimeout(1, 1);
+        vex::task::sleep(100);
+        FrontLeft.stop(vex::brakeType::coast);
+        BackLeft.stop(vex::brakeType::coast);
+        BackRight.stop(vex::brakeType::coast);
+        FrontRight.stop(vex::brakeType::coast);
+        Intake.spin(vex::directionType::rev, (maxSpeed * .50), vex::velocityUnits::pct);
+        
+        driveMoveFor(52, 70);
+        
+        Puncher.rotateFor(150, vex::rotationUnits::deg, 100, vex::velocityUnits::pct, false);
+        FrontLeft.spin(vex::directionType::rev, 50, vex::velocityUnits::pct);
+        BackLeft.spin(vex::directionType::rev, 50, vex::velocityUnits::pct);
+        BackRight.spin(vex::directionType::fwd, 50, vex::velocityUnits::pct);
+        FrontRight.spin(vex::directionType::fwd, 50, vex::velocityUnits::pct);
+        curr = Gyro.value(vex::analogUnits::range8bit);
+        
+        while(((Gyro.value(vex::analogUnits::range8bit)) - curr) > -33){
+           vex::task::sleep(10); 
+        }
+        
+        FrontLeft.stop(vex::brakeType::hold);
+        BackLeft.stop(vex::brakeType::hold);
+        BackRight.stop(vex::brakeType::hold);
+        FrontRight.stop(vex::brakeType::hold);
+        driveTimeout(1, 1);
+        Puncher.rotateFor(360, vex::rotationUnits::deg, 100,vex::velocityUnits::pct, false);
+        Puncher.setTimeout(1, vex::timeUnits::sec);
+        vex::task::sleep(250);
+        FrontLeft.stop(vex::brakeType::coast);
+        BackLeft.stop(vex::brakeType::coast);
+        BackRight.stop(vex::brakeType::coast);
+        FrontRight.stop(vex::brakeType::coast);
+        
+        driveTurnFor(31, 31, 60, 100);
+        Puncher.stop(vex::brakeType::coast);
+    }
 
 void autonomous( void ) {
-  // ..........................................................................
-  // Insert autonomous user code here.
-  // ..........................................................................
-
+    flag3Red();
+    driveLock(false);
+    vex::task::sleep(15000);
 }
 
     void autoPuncher(){
         //if in flag mode and puncher trigger is clicked
         if(driveType && puncherTrigger){
-            Puncher.rotateFor(360,vex::rotationUnits::deg,127,vex::velocityUnits::pct);
+            Puncher.rotateFor(360,vex::rotationUnits::deg,100,vex::velocityUnits::pct);
             Puncher.setTimeout(800, vex::timeUnits::msec);
             puncherTrigger = false;
         }
@@ -86,9 +315,9 @@ void autonomous( void ) {
     
     void puncherTriggerDetect(){
         if(driveType){
-            if(Controller1.ButtonR2.pressing()){
+            if(Controller1.ButtonX.pressing()){
             //wait until released
-               while(Controller1.ButtonR2.pressing()){
+               while(Controller1.ButtonX.pressing()){
                    vex::task::sleep(100);
                }
             //run func
@@ -122,7 +351,7 @@ void autonomous( void ) {
                 }  
             }
         }
-    void driveSwitch(void){
+    void driveSwitch(){
         //if button A is pressed
        if(Controller1.ButtonA.pressing()){
            //wait until released
@@ -131,30 +360,13 @@ void autonomous( void ) {
            }
            //run func
            driveType = !driveType;
-           
-           //test++;
+          
        }
         
     }
 
-    void driveLock(bool z){
-        // if z is true, lock is turned on
-        // else, it's turned off
-        
-        if(z){
-            FrontLeft.stop(vex::brakeType::hold);
-            BackLeft.stop(vex::brakeType::hold);
-            FrontRight.stop(vex::brakeType::hold);
-            BackRight.stop(vex::brakeType::hold);  
-        }
-        else if(!z) {
-            FrontLeft.stop(vex::brakeType::coast);
-            BackLeft.stop(vex::brakeType::coast);
-            FrontRight.stop(vex::brakeType::coast);
-            BackRight.stop(vex::brakeType::coast);
-        }
 
-    }
+    
 
     void driveLockDetect(){
         if(Controller1.ButtonB.pressing()){
@@ -167,6 +379,29 @@ void autonomous( void ) {
            driveLock(driveLockOn);
        }
     }
+    
+    void autoLiftReset(){
+        if(liftReset){
+        CapIntake.rotateTo(0,vex::rotationUnits::deg, 80,vex::velocityUnits::pct, false);
+        Lift.rotateTo(0, vex::rotationUnits::deg, 85,vex::velocityUnits::pct);
+            liftReset = false;
+        }
+    }
+
+    void liftResetDetect(){
+        
+                
+                //button for main cap flip
+                if(Controller1.ButtonDown.pressing()){
+                //wait until released
+                   while(Controller1.ButtonDown.pressing()){
+                       vex::task::sleep(100);
+                   }
+                //run func
+                liftReset = true;
+                }  
+    }
+
 
     void otherTaskFunc(){
         //the functions that run in this "othertask"
@@ -174,10 +409,13 @@ void autonomous( void ) {
         //actions
         autoPuncher();
         autoCapFlip();
+        autoLiftReset();
         
         //detections
         //switch drive into cap mode
         driveSwitch();
+        liftResetDetect();
+        
         
         //auto flip for cap
         capTriggerDetect();
@@ -237,6 +475,7 @@ void autonomous( void ) {
               //Brain.Screen.printAt(1, 115, "%d", Gyro.value(vex::rotationUnits::deg));
             
               Brain.Screen.printAt(1, 155, "%d", Gyro.value(vex::percentUnits::pct));
+              Brain.Screen.printAt(1, 180, "%d", liftReset);
     }
 
 
@@ -281,10 +520,10 @@ void autonomous( void ) {
     void IntakeControl(void){
         if(driveType){
             if(Controller1.ButtonL2.pressing()){
-                Intake.spin(vex::directionType::fwd, (maxSpeed * .55), vex::velocityUnits::pct);
+                Intake.spin(vex::directionType::fwd, (maxSpeed * .66), vex::velocityUnits::pct);
             }
             else if(Controller1.ButtonL1.pressing()){
-                Intake.spin(vex::directionType::rev, maxSpeed, vex::velocityUnits::pct);
+                Intake.spin(vex::directionType::rev, (maxSpeed * .66), vex::velocityUnits::pct);
             }
             else {
                 Intake.stop(vex::brakeType::coast);
@@ -293,20 +532,22 @@ void autonomous( void ) {
     }
     
     void PuncherControl(void){
-    //button
-        
+    //button  
         if(driveType){
         
             if(!puncherTrigger){
-                if(Controller1.ButtonX.pressing()){
-                    Puncher.spin(vex::directionType::rev, maxSpeed / 3, vex::velocityUnits::pct);
+                /*
+                if(Controller1.ButtonR1.pressing()){
+                    Puncher.spin(vex::directionType::rev, maxSpeed / 1.5, vex::velocityUnits::pct);
                 }
-                else if(Controller1.ButtonR1.pressing()){
+                
+                else */if(Controller1.ButtonR2.pressing()){
                     Puncher.spin(vex::directionType::fwd, maxSpeed, vex::velocityUnits::pct);
                 }
+                
                 else {
-                    //Puncher.stop(vex::brakeType::hold);
-                    Puncher.stop(vex::brakeType::brake);
+                    Puncher.stop(vex::brakeType::coast);
+                    //Puncher.stop(vex::brakeType::brake);
                 }
                 
                 
@@ -322,9 +563,10 @@ void autonomous( void ) {
             else if(Controller1.ButtonR2.pressing()){
                 Lift.spin(vex::directionType::rev, maxSpeed, vex::velocityUnits::pct);
             }
-            else
-                Lift.stop(vex::brakeType::brake);
-               // Lift.stop(vex::brakeType::coast);
+            else if(!liftReset){
+                //Lift.stop(vex::brakeType::brake);
+                Lift.stop(vex::brakeType::coast);
+            }
 
         }
     
@@ -340,9 +582,9 @@ void autonomous( void ) {
             else if(Controller1.ButtonL2.pressing()){
                 CapIntake.spin(vex::directionType::rev, maxSpeed / 2, vex::velocityUnits::pct);
             }
-            else if(!capTrigger){
+            else if((!capTrigger) && (!liftReset)){
                 //CapIntake.spin(vex::directionType::fwd, 0, vex::velocityUnits::pct);
-                CapIntake.stop(vex::brakeType::hold);
+                CapIntake.stop(vex::brakeType::coast);
              
             } 
             /*
@@ -378,9 +620,7 @@ void usercontrol( void ) {
   vex::task display(displayTask, 2);
     
   while (1) {
-      allRemoteFunc();
-      
-                       
+      allRemoteFunc();                
     vex::task::sleep(20); //Sleep the task for a short amount of time to prevent wasted resources. 
   }
 }
