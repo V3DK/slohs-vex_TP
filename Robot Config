@@ -5,7 +5,9 @@ vex::motor FrontRight = vex::motor(vex::PORT20, vex::gearSetting::ratio18_1, tru
 vex::motor BackRight = vex::motor(vex::PORT19, vex::gearSetting::ratio18_1, true);
 vex::motor Intake = vex::motor(vex::PORT18, vex::gearSetting::ratio6_1);
 vex::motor Puncher = vex::motor(vex::PORT17, vex::gearSetting::ratio36_1, true);
-vex::motor Lift = vex::motor(vex::PORT9, vex::gearSetting::ratio18_1);
-vex::motor CapIntake = vex::motor(vex::PORT10, vex::gearSetting::ratio18_1);
+vex::motor Lift = vex::motor(vex::PORT7, vex::gearSetting::ratio18_1);
+vex::motor CapIntake = vex::motor(vex::PORT9, vex::gearSetting::ratio18_1);
 vex::gyro Gyro = vex::gyro(Brain.ThreeWirePort.A);
 vex::controller Controller1 = vex::controller();
+
+//port 8 and 10 are broken
