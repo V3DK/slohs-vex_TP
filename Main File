@@ -143,10 +143,10 @@ int autoTask(){
         
         //if it's a right turn, execute right turn procedure
         if(rightTurn){
-          FrontLeft.spin(vex::directionType::rev, vLeft, vex::velocityUnits::pct);
-          BackLeft.spin(vex::directionType::rev, vLeft, vex::velocityUnits::pct);
-          BackRight.spin(vex::directionType::fwd, vRight, vex::velocityUnits::pct);
-          FrontRight.spin(vex::directionType::fwd, vRight, vex::velocityUnits::pct);
+          FrontLeft.spin(vex::directionType::fwd, vLeft, vex::velocityUnits::pct);
+          BackLeft.spin(vex::directionType::fwd, vLeft, vex::velocityUnits::pct);
+          BackRight.spin(vex::directionType::rev, vRight, vex::velocityUnits::pct);
+          FrontRight.spin(vex::directionType::rev, vRight, vex::velocityUnits::pct);
           //wait until difference between real time value and stored value passes threshold
           while(((Gyro.value(vex::analogUnits::range8bit)) - currVal) < amt){
             vex::task::sleep(10); 
@@ -157,10 +157,10 @@ int autoTask(){
         }
         //if it's a left turn, execute left turn
         else if(!rightTurn){
-          FrontLeft.spin(vex::directionType::fwd, vLeft, vex::velocityUnits::pct);
-          BackLeft.spin(vex::directionType::fwd, vLeft, vex::velocityUnits::pct);
-          BackRight.spin(vex::directionType::rev, vRight, vex::velocityUnits::pct);
-          FrontRight.spin(vex::directionType::rev, vRight, vex::velocityUnits::pct);
+          FrontLeft.spin(vex::directionType::rev, vLeft, vex::velocityUnits::pct);
+          BackLeft.spin(vex::directionType::rev, vLeft, vex::velocityUnits::pct);
+          BackRight.spin(vex::directionType::fwd, vRight, vex::velocityUnits::pct);
+          FrontRight.spin(vex::directionType::fwd, vRight, vex::velocityUnits::pct);
           while(((Gyro.value(vex::analogUnits::range8bit)) - currVal) > (-1 * amt)){
             vex::task::sleep(10); 
           }
@@ -441,7 +441,7 @@ int autoTask(){
         if(park){
           //drive and flip cap
           driveMoveFor(52, 70);
-          driveTimeout(1.5, 1,5);
+          driveTimeout(1.5, 1.5);
 
           //turn and face platform
           gyroTurn(true, 50, 50, 45);
@@ -489,7 +489,7 @@ int autoTask(){
         }
         else {
           driveMoveFor(52, 70);
-          driveTimeout(1.5, 1,5);
+          driveTimeout(1.5, 1.5);
         }
 
 
@@ -768,7 +768,7 @@ int autoTask(){
         if(park){
           //drive and flip cap
           driveMoveFor(52, 70);
-          driveTimeout(1.5, 1,5);
+          driveTimeout(1.5, 1.5);
 
           //turn and face platform
           gyroTurn(false, 50, 50, 45);
@@ -816,7 +816,7 @@ int autoTask(){
         }
         else {
           driveMoveFor(52, 70);
-          driveTimeout(1.5, 1,5);
+          driveTimeout(1.5, 1.5);
         }
 
 
@@ -880,16 +880,16 @@ void autonomous( void ) {
     vex::task autoHelp(autoTask);
 
     //run 3 flag function
-    flag3Red(false, false, false);
+    threeFlagRed(false, true, false);
 
     //blue side
-    //flagBlue(false, false, false);
+    //threeFlagBlue(false, false, false);
 
     //turn drive lock off for start of match
     driveLock(false);
 
     //stop auto helper task
-    vex::task.stop(autoTask);
+    vex::task stop(autoTask);
     
     //just in case
     vex::task::sleep(15000);
@@ -933,6 +933,7 @@ void autonomous( void ) {
             if(!driveType){
                 
                 //button for main cap flip
+                //up button
                 if(Controller1.ButtonUp.pressing()){
                 //wait until released
                    while(Controller1.ButtonUp.pressing()){
@@ -944,6 +945,7 @@ void autonomous( void ) {
             }
         }
     void driveSwitch(){
+
         //if button A is pressed
        if(Controller1.ButtonA.pressing()){
            //wait until released
@@ -1148,24 +1150,28 @@ void autonomous( void ) {
     }
     void LiftControl(void){
     //preset heights
-        if(!driveType){
-            if(Controller1.ButtonR1.pressing()){
+        if(Controller1.ButtonR1.pressing()){
+            if(!driveType)
                 Lift.spin(vex::directionType::fwd, maxSpeed, vex::velocityUnits::pct);
             }
-            else if(Controller1.ButtonR2.pressing()){
-                Lift.spin(vex::directionType::rev, maxSpeed, vex::velocityUnits::pct);
+        else if(Controller1.ButtonR2.pressing()){
+                if(!driveType)
+                    Lift.spin(vex::directionType::rev, maxSpeed, vex::velocityUnits::pct);
             }
-            else if(!liftReset){
-                //Lift.stop(vex::brakeType::brake);
-                Lift.stop(vex::brakeType::coast);
-            }
+        else {
+            if((!liftReset) && (!driveType))
+                Lift.stop(vex::brakeType::hold);
+        
 
+            //if in flags mode, coast lift to protect motors
+            else if((!liftReset) && (driveType))
+                Lift.stop(vex::brakeType::coast);   
         }
     
     }
     void CapIntakeControl(void){
     //button
-       
+       /*
         if(!driveType){
              
             if(Controller1.ButtonL1.pressing()){
@@ -1174,23 +1180,36 @@ void autonomous( void ) {
             else if(Controller1.ButtonL2.pressing()){
                 CapIntake.spin(vex::directionType::rev, maxSpeed / 2, vex::velocityUnits::pct);
             }
-            else if((!capTrigger) && (!liftReset)){
-                //CapIntake.spin(vex::directionType::fwd, 0, vex::velocityUnits::pct);
-                CapIntake.stop(vex::brakeType::coast);
-             
-            } 
-            /*
-            //button for main cap flip
-            if(Controller1.ButtonUp.pressing()){
-            //wait until released
-               while(Controller1.ButtonUp.pressing()){
-                   vex::task::sleep(100);
-               }
-            //run func
-            capTrigger = true;
-            }
-            */
         }
+
+        //if in flags mode, turn cap holding off to protect motors
+        if((!capTrigger) && (!liftReset) && (!driveType)){
+          CapIntake.stop(vex::brakeType::hold);
+        }
+        //if in caps mode, turn cap holding on to score
+        else if((!capTrigger) && (!liftReset) && (driveType)){
+          CapIntake.stop(vex::brakeType::coast);
+        }
+        */
+        if(Controller1.ButtonL1.pressing()){
+            if(!driveType){
+                CapIntake.spin(vex::directionType::fwd, maxSpeed / 2, vex::velocityUnits::pct);
+                Brain.Screen.printAt(100, 100, "entered");
+            }
+            }
+        else if(Controller1.ButtonL2.pressing()){
+            if(!driveType)
+                CapIntake.spin(vex::directionType::rev, maxSpeed / 2, vex::velocityUnits::pct);
+            }
+        else {
+            
+            if((!capTrigger) && (!liftReset) && (!driveType))
+                CapIntake.stop(vex::brakeType::hold);
+
+            else if((!capTrigger) && (!liftReset) && (driveType))
+          CapIntake.stop(vex::brakeType::coast);
+        }
+        
     }
 
 
