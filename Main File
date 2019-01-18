@@ -9,7 +9,7 @@ Joysticks - Tank Control
 A - Switch Drive Modes [Initially in Flags]
 
 
-Displays Drive Mode on Controller
+Displays Drive Mde on Controller
 
 Flags: 
 Joystick - Intake Side as Forward
@@ -46,11 +46,22 @@ false - Caps
 float math_Pi = 3.1415926535897932384626433;
 
 //vars for trigger control
-bool driveType = true;
+//not used anymore
+//bool driveType = true;
+
+bool liftActivate = false;
+
 bool puncherTrigger = false;
 bool capTrigger = false;
 bool driveLockOn = false;
 bool liftReset = false;
+
+//var to determine whether to use joystick or buttons for cap intake
+bool capJoy = true;
+
+bool puncherIsMoving = false;
+
+//activate bool
 
 //used to tell auton helper task to pull back puncher
 bool prePuncher = false;
@@ -292,7 +303,7 @@ int autoTask(){
         //puncher now in pre shoot position
 
         //drive forward 10 inches for flag alignment before turning
-        driveMoveFor(11.5, 45);
+        driveMoveFor(11, 45);
         driveTimeout(1, 1);
 
         //using gyro turn left to align with flags
@@ -304,7 +315,7 @@ int autoTask(){
         FrontRight.spin(vex::directionType::fwd, 40, vex::velocityUnits::pct);
         currVal = Gyro.value(vex::analogUnits::range8bit);
 
-        while(((Gyro.value(vex::analogUnits::range8bit)) - currVal) > -48){
+        while(((Gyro.value(vex::analogUnits::range8bit)) - currVal) > -50){
            vex::task::sleep(10); 
         }
         //stop motors with PID
@@ -717,26 +728,59 @@ int autoTask(){
         driveLock(false);
     }
 
-    void blueParking(){
+    void backblueParking(){
         resetDrive();
-        driveMoveFor(13, 20);
+        driveMoveFor(20, 30);
  
-        vex::task::sleep(2000);
+        vex::task::sleep(7000);
+
         Puncher.rotateFor(360, vex::rotationUnits::deg, 100, vex::velocityUnits::pct, true);
-          Puncher.stop(vex::brakeType::hold);
-        Intake.spin(vex::directionType::fwd, (maxSpeed * .20), vex::velocityUnits::pct);
-        driveMoveFor(-13, 20);
+        Puncher.stop(vex::brakeType::coast);
+
+        driveMoveFor(-20, 30);
         resetDrive();
         gyroTurn(false, 50, 50, 16);
         resetDrive();
+
+        Intake.spin(vex::directionType::fwd, (maxSpeed * .20), vex::velocityUnits::pct);
+
         trevo = (48 / (4 * math_Pi));
         BackLeft.rotateFor(trevo, vex::rotationUnits::rev, 50, vex::velocityUnits::pct, false);
         BackRight.rotateFor(trevo, vex::rotationUnits::rev, 50, vex::velocityUnits::pct, true);
         driveCoast();
         resetDrive();
         
-        driveMoveFor(-15, 100);
+        driveMoveFor(-20, 100);
         gyroTurn(true, 50, 50, 49);
+        resetDrive();
+        Intake.spin(vex::directionType::fwd, (0), vex::velocityUnits::pct);
+        driveMoveFor(45, 100);
+    }
+
+    void backredParking(){
+        resetDrive();
+        driveMoveFor(20, 30);
+ 
+        vex::task::sleep(7000);
+
+        Puncher.rotateFor(360, vex::rotationUnits::deg, 100, vex::velocityUnits::pct, true);
+        Puncher.stop(vex::brakeType::coast);
+
+        driveMoveFor(-20, 30);
+        resetDrive();
+        gyroTurn(true, 50, 50, 15);
+        resetDrive();
+
+        Intake.spin(vex::directionType::fwd, (maxSpeed * .20), vex::velocityUnits::pct);
+
+        trevo = (48 / (4 * math_Pi));
+        BackLeft.rotateFor(trevo, vex::rotationUnits::rev, 50, vex::velocityUnits::pct, false);
+        BackRight.rotateFor(trevo, vex::rotationUnits::rev, 50, vex::velocityUnits::pct, true);
+        driveCoast();
+        resetDrive();
+        
+        driveMoveFor(-20, 100);
+        gyroTurn(false, 50, 50, 49);
         resetDrive();
         Intake.spin(vex::directionType::fwd, (0), vex::velocityUnits::pct);
         driveMoveFor(45, 100);
@@ -753,11 +797,15 @@ void autonomous( void ) {
     //(bool fourFlag, bool fiveFlag, bool park)
     
     //run 3 flag function
-    //threeFlagRed(false, false, true);
+    threeFlagRed(false, true, false);
 
     //blue side
     //threeFlagBlue(false, true, false);
-    blueParking();
+
+    //red back side
+
+    //blue back side
+    //backblueParking();
 
     //stop auto helper task
     vex::task stop(autoTask); 
@@ -768,7 +816,7 @@ void autonomous( void ) {
 
     void autoPuncher(){
         //if in flag mode and puncher trigger is clicked
-        if(driveType && puncherTrigger){
+        if(puncherTrigger){
             Puncher.rotateFor(360,vex::rotationUnits::deg,100,vex::velocityUnits::pct);
             Puncher.setTimeout(800, vex::timeUnits::msec);
             puncherTrigger = false;
@@ -776,7 +824,6 @@ void autonomous( void ) {
     }
     
     void puncherTriggerDetect(){
-        if(driveType){
             if(Controller1.ButtonX.pressing()){
             //wait until released
                while(Controller1.ButtonX.pressing()){
@@ -786,44 +833,46 @@ void autonomous( void ) {
             puncherTrigger = true;
             }  
         }
-    }
+    
 
     void autoCapFlip(){
         //if in cap mode and cap trigger is clicked
-        if(!driveType && capTrigger){
+        if(capTrigger){
             CapIntake.rotateTo(-60,vex::rotationUnits::deg, 60,vex::velocityUnits::pct);
-            vex::task::sleep(350);
-            CapIntake.rotateTo(-315,vex::rotationUnits::deg, 75,vex::velocityUnits::pct);
-            CapIntake.setTimeout(2000, vex::timeUnits::msec);
+            CapIntake.setTimeout(750, vex::timeUnits::msec);
+
+            vex::task::sleep(250);
+            CapIntake.rotateTo(-320,vex::rotationUnits::deg, 68,vex::velocityUnits::pct);
+            CapIntake.setTimeout(1000, vex::timeUnits::msec);
             capTrigger = false;
         }
     }
 
       void capTriggerDetect(){
-            if(!driveType){
                 
                 //button for main cap flip
                 //up button
-                if(Controller1.ButtonUp.pressing()){
+                if(Controller2.ButtonUp.pressing()){
                 //wait until released
-                   while(Controller1.ButtonUp.pressing()){
+                   while(Controller2.ButtonUp.pressing()){
                        vex::task::sleep(100);
                    }
                 //run func
                 capTrigger = true;
                 }  
             }
-        }
-    void driveSwitch(){
+        
+        
+    void liftActivateDetect(){
 
         //if button A is pressed
-       if(Controller1.ButtonA.pressing()){
+       if(Controller2.ButtonA.pressing()){
            //wait until released
-           while(Controller1.ButtonA.pressing()){
+           while(Controller2.ButtonA.pressing()){
                vex::task::sleep(100);
            }
            //run func
-           driveType = !driveType;
+           liftActivate = !liftActivate;
           
        }
         
@@ -846,17 +895,20 @@ void autonomous( void ) {
         if(liftReset){
         CapIntake.rotateTo(0,vex::rotationUnits::deg, 80,vex::velocityUnits::pct, false);
         Lift.rotateTo(0, vex::rotationUnits::deg, 85,vex::velocityUnits::pct);
+            while(CapIntake.isSpinning() && Lift.isSpinning()){
+                vex::task::sleep(50);
+            }
             liftReset = false;
         }
     }
 
     void liftResetDetect(){
         
-                
+             
                 //button for main cap flip
-                if(Controller1.ButtonDown.pressing()){
+                if(Controller2.ButtonDown.pressing()){
                 //wait until released
-                   while(Controller1.ButtonDown.pressing()){
+                   while(Controller2.ButtonDown.pressing()){
                        vex::task::sleep(100);
                    }
                 //run func
@@ -865,33 +917,50 @@ void autonomous( void ) {
     }
 
 
-    void otherTaskFunc(){
+    void driveTaskFunc(){
         //the functions that run in this "othertask"
         
         //actions
         autoPuncher();
-        autoCapFlip();
-        autoLiftReset();
-        
-        //detections
-        //switch drive into cap mode
-        driveSwitch();
-        liftResetDetect();
-        
-        
-        //auto flip for cap
-        capTriggerDetect();
-        
+       
         //puncher auto button
         puncherTriggerDetect();
         
         //drive lock for platform
         driveLockDetect();
     }
+
+void liftTaskFunc(){
+        //the functions that run in this "othertask"
+        
+        //actions
+        autoCapFlip();
+        autoLiftReset();
+        
+        //detections
+        //switch lift into active mode
+        liftActivateDetect();
+        liftResetDetect();
+        
+        
+        //auto flip for cap
+        capTriggerDetect();
+        
+        
+    }
 //other task used to run puncher and cap intake triggers
-    int otherTask(){
+    int driveTask(){
         while(true){
-            otherTaskFunc();
+            driveTaskFunc();
+            //to not waste resources
+            vex::task::sleep(20);
+        }
+        return 0;
+    }
+
+int liftTask(){
+        while(true){
+            liftTaskFunc();
             //to not waste resources
             vex::task::sleep(20);
         }
@@ -899,24 +968,27 @@ void autonomous( void ) {
     }
 
 
+
     void controllerDisplay(){
             Controller1.Screen.clearScreen();
-                if(driveType){
-                    Controller1.Screen.setCursor(1,1);
-                    Controller1.Screen.print("Flags");
+        Controller2.Screen.clearScreen();
+            
+                if(liftActivate){
+                    Controller2.Screen.setCursor(1,1);
+                    Controller2.Screen.print("On");
                 }
-                else if(!driveType){
-                    Controller1.Screen.setCursor(1,17);
-                    //Controller1.Screen.print("              Caps");
-                    Controller1.Screen.print("Caps");
+                else if(!liftActivate){
+                    Controller2.Screen.setCursor(1,17);
+                    Controller2.Screen.print("Off");
                 }
+                
         
                 if(driveLockOn){
-                    Controller1.Screen.setCursor(20,1);
+                    Controller1.Screen.setCursor(1,1);
                     Controller1.Screen.print("On");
                 }
                 else if(!driveLockOn){
-                    Controller1.Screen.setCursor(20, 18);
+                    Controller1.Screen.setCursor(1, 18);
                     //Controller1.Screen.print("               Off");
                     Controller1.Screen.print("Off");
                 }
@@ -967,27 +1039,36 @@ void autonomous( void ) {
         }
         */
         //else
-        if(driveType){
-            FrontLeft.spin(vex::directionType::fwd, Controller1.Axis3.value(), vex::velocityUnits::pct);
-            BackLeft.spin(vex::directionType::fwd, Controller1.Axis3.value(), vex::velocityUnits::pct);
-            FrontRight.spin(vex::directionType::fwd, Controller1.Axis2.value(), vex::velocityUnits::pct);
-            BackRight.spin(vex::directionType::fwd, Controller1.Axis2.value(), vex::velocityUnits::pct);
-            
+        //if(driveType){
+
+        if(puncherIsMoving){
+            FrontLeft.spin(vex::directionType::fwd, Controller1.Axis3.value() * .5, vex::velocityUnits::pct);
+            BackLeft.spin(vex::directionType::fwd, Controller1.Axis3.value() * .5, vex::velocityUnits::pct);
+            FrontRight.spin(vex::directionType::fwd, Controller1.Axis2.value() * .5, vex::velocityUnits::pct);
+            BackRight.spin(vex::directionType::fwd, Controller1.Axis2.value() * .5, vex::velocityUnits::pct);
         }
         else {
-            FrontLeft.spin(vex::directionType::rev, Controller1.Axis2.value(), vex::velocityUnits::pct);
-            BackLeft.spin(vex::directionType::rev, Controller1.Axis2.value(), vex::velocityUnits::pct);
-            FrontRight.spin(vex::directionType::rev, Controller1.Axis3.value(), vex::velocityUnits::pct);
-            BackRight.spin(vex::directionType::rev, Controller1.Axis3.value(), vex::velocityUnits::pct);
+            FrontLeft.spin(vex::directionType::fwd, Controller1.Axis3.value() * .9, vex::velocityUnits::pct);
+            BackLeft.spin(vex::directionType::fwd, Controller1.Axis3.value() * .9, vex::velocityUnits::pct);
+            FrontRight.spin(vex::directionType::fwd, Controller1.Axis2.value() * .9, vex::velocityUnits::pct);
+            BackRight.spin(vex::directionType::fwd, Controller1.Axis2.value() * .9, vex::velocityUnits::pct);
         }
+            
+        //}
+       // else {
+         //   FrontLeft.spin(vex::directionType::rev, Controller1.Axis2.value() * .9, vex::velocityUnits::pct);
+         //   BackLeft.spin(vex::directionType::rev, Controller1.Axis2.value() * .9, vex::velocityUnits::pct);
+         //   FrontRight.spin(vex::directionType::rev, Controller1.Axis3.value() * .9, vex::velocityUnits::pct);
+         //   BackRight.spin(vex::directionType::rev, Controller1.Axis3.value() * .9, vex::velocityUnits::pct);
+        //}
     }
 
     //intake control for roller
     //if drivetype is true, run shooting mode
     void IntakeControl(void){
-        if(driveType){
+
             if(Controller1.ButtonL2.pressing()){
-                Intake.spin(vex::directionType::fwd, (maxSpeed * .66), vex::velocityUnits::pct);
+                Intake.spin(vex::directionType::fwd, (maxSpeed * .53), vex::velocityUnits::pct);
             }
             else if(Controller1.ButtonL1.pressing()){
                 Intake.spin(vex::directionType::rev, (maxSpeed * .66), vex::velocityUnits::pct);
@@ -996,11 +1077,11 @@ void autonomous( void ) {
                 Intake.stop(vex::brakeType::coast);
             }
         }
-    }
+    
     
     void PuncherControl(void){
     //button  
-        if(driveType){
+
         
             if(!puncherTrigger){
                 /*
@@ -1009,10 +1090,12 @@ void autonomous( void ) {
                 }
                 
                 else */if(Controller1.ButtonR2.pressing()){
+                    puncherIsMoving = true;
                     Puncher.spin(vex::directionType::fwd, maxSpeed, vex::velocityUnits::pct);
                 }
                 
                 else {
+                    puncherIsMoving = false;
                     Puncher.stop(vex::brakeType::coast);
                     //Puncher.stop(vex::brakeType::brake);
                 }
@@ -1020,52 +1103,56 @@ void autonomous( void ) {
                 
             }
         }
-    }
+    
     void LiftControl(void){
     //preset heights
-        if(Controller1.ButtonR1.pressing()){
-            if(!driveType)
+        if(Controller2.ButtonR2.pressing()){
                 Lift.spin(vex::directionType::fwd, maxSpeed, vex::velocityUnits::pct);
             }
-        else if(Controller1.ButtonR2.pressing()){
-                if(!driveType)
-                    Lift.spin(vex::directionType::rev, (maxSpeed * .66), vex::velocityUnits::pct);
+        else if(Controller2.ButtonR1.pressing()){
+                    Lift.spin(vex::directionType::rev, (maxSpeed), vex::velocityUnits::pct);
             }
         else {
-            if((!liftReset) && (!driveType) && (capTrigger))
+            if((!liftReset) && (capTrigger))
                 Lift.stop(vex::brakeType::hold);     
 
             //if in flags mode, coast lift to protect motors
-            else if((!liftReset) && (driveType))
-                Lift.stop(vex::brakeType::coast);   
+
+            //activate lift if activate variable is true
+            else if((!liftReset) && (liftActivate))
+                Lift.stop(vex::brakeType::hold);   
             else if(!liftReset)
                 Lift.stop(vex::brakeType::coast);
         }
     
     }
     void CapIntakeControl(void){
-    //button
-        if(Controller1.ButtonL1.pressing()){
-            if(!driveType){
-                CapIntake.spin(vex::directionType::fwd, maxSpeed / 2, vex::velocityUnits::pct);
+    //button        
+            if(Controller2.ButtonL2.pressing()){
+                CapIntake.spin(vex::directionType::fwd, maxSpeed * .6, vex::velocityUnits::pct);
+            
             }
-            }
-        else if(Controller1.ButtonL2.pressing()){
-            if(!driveType)
-                CapIntake.spin(vex::directionType::rev, maxSpeed / 2, vex::velocityUnits::pct);
+        else if(Controller2.ButtonL1.pressing()){
+                CapIntake.spin(vex::directionType::rev, maxSpeed * .6, vex::velocityUnits::pct);
             }
         else {
-            
-            if((!capTrigger) && (!liftReset) && (!driveType))
+            //if lift is activated, and other bools permit, run lift hold
+            if((!liftReset) && (!capTrigger))
                 CapIntake.stop(vex::brakeType::hold);
+        }
+//                CapIntake.spin(vex::directionType::fwd, Controller1.Axis3.value() * .6, vex::velocityUnits::pct);
+        
+        if(!((Controller2.ButtonL2.pressing()) || (Controller2.ButtonL1.pressing()))){
+            if((!liftReset) && (!capTrigger))
+             CapIntake.spin(vex::directionType::fwd, Controller2.Axis3.value() * .6, vex::velocityUnits::pct);
+        }
 
-            else if((!capTrigger) && (!liftReset) && (driveType))
-          CapIntake.stop(vex::brakeType::coast);
+    //        CapIntake.spin(vex::directionType::fwd, Controller2.Axis3.value() * .6, vex::velocityUnits::pct);
+
+        
         }
         
-    }
-
-
+        
     void allRemoteFunc(void){
         CapIntakeControl();
         LiftControl();
@@ -1078,10 +1165,15 @@ void usercontrol( void ) {
   // User control code here, inside the loop
     
   //initiate task for triggers, like cap control and puncher button
-  vex::task trigger(otherTask, 1);
+    vex::task driveTriggers(driveTask, 1);
+  vex::task liftTriggers(liftTask, 2);
   
   //initiate task for brain and controller displays
-  vex::task display(displayTask, 2);
+  vex::task display(displayTask, 3);
+    
+    Puncher.stop(vex::brakeType::coast);
+        Intake.stop(vex::brakeType::coast);
+        driveLock(false);
     
   while (1) {
     allRemoteFunc();                
@@ -1095,6 +1187,7 @@ int main() {
     //Run the pre-autonomous function. 
     pre_auton();
     
+    
     //Set up callbacks for autonomous and driver control periods.
     Competition.autonomous(autonomous);
     Competition.drivercontrol(usercontrol);
@@ -1105,5 +1198,3 @@ int main() {
     }    
        
 }
-
-
