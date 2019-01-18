@@ -757,6 +757,105 @@ int autoTask(){
         driveMoveFor(45, 100);
     }
 
+    void backBlueTesting(){
+        resetDrive();
+
+        //drive forward
+        //driveMoveFor(20, 30);
+        trevo = (20 / (4 * math_Pi));
+        BackLeft.rotateFor(trevo, vex::rotationUnits::rev, 30, vex::velocityUnits::pct, false);
+        BackRight.rotateFor(trevo, vex::rotationUnits::rev, 30, vex::velocityUnits::pct, true);
+        driveCoast();
+        resetDrive();
+
+        //wait 7 seconds before shooting
+        vex::task::sleep(7000);
+
+        //shoot puncher
+        Puncher.rotateFor(360, vex::rotationUnits::deg, 100, vex::velocityUnits::pct, true);
+        Puncher.stop(vex::brakeType::coast);
+
+        //drive back
+        // driveMoveFor(-20, 30);
+        trevo = (-20 / (4 * math_Pi));
+        BackLeft.rotateFor(trevo, vex::rotationUnits::rev, 30, vex::velocityUnits::pct, false);
+        BackRight.rotateFor(trevo, vex::rotationUnits::rev, 30, vex::velocityUnits::pct, true);
+        driveCoast();
+        resetDrive();
+        vex::task::sleep(150);
+
+        //turn and align for cap
+        resetDrive();
+        gyroTurn(false, 50, 50, 16);
+
+        vex::task::sleep(150);
+
+        //align against back wall
+        resetDrive();
+        driveMoveFor(-10, 50);
+
+        //start intake
+        Intake.spin(vex::directionType::fwd, (maxSpeed * .20), vex::velocityUnits::pct);
+
+        //drive forward and get ball
+        trevo = (53 / (4 * math_Pi));
+        BackLeft.rotateFor(trevo, vex::rotationUnits::rev, 50, vex::velocityUnits::pct, false);
+        BackRight.rotateFor(trevo, vex::rotationUnits::rev, 50, vex::velocityUnits::pct, true);
+        driveCoast();
+        resetDrive();
+
+
+        vex::task::sleep(350);
+        //drive back before turning for other low cap
+        trevo = (-16 / (4 * math_Pi));
+        BackLeft.rotateFor(trevo, vex::rotationUnits::rev, 50, vex::velocityUnits::pct, false);
+        BackRight.rotateFor(trevo, vex::rotationUnits::rev, 50, vex::velocityUnits::pct, true);
+        driveCoast();
+        resetDrive();
+        vex::task::sleep(150);
+
+        //turn so lift can flip other low cap
+        gyroTurn(true, 50, 50, 75);
+
+        //put cappy boi out
+        CapIntake.rotateTo(-330,vex::rotationUnits::deg, 100, vex::velocityUnits::pct, true);
+
+        vex::task::sleep(150);
+        resetDrive();
+
+        //drive into cap
+        trevo = (-30 / (4 * math_Pi));
+        BackLeft.rotateFor(trevo, vex::rotationUnits::rev, 50, vex::velocityUnits::pct, false);
+        BackRight.rotateFor(trevo, vex::rotationUnits::rev, 50, vex::velocityUnits::pct, true);
+        driveCoast();
+        resetDrive();     
+        vex::task::sleep(150);
+
+        //flip cap onto lexan
+        CapIntake.rotateTo(-60, vex::rotationUnits::deg, 60,vex::velocityUnits::pct);
+        vex::task::sleep(250);
+        CapIntake.rotateTo(-330, vex::rotationUnits::deg, 85, vex::velocityUnits::pct);
+
+        //drive back
+        driveMoveFor(-30, 70);
+
+        //rotate cap boi in
+        CapIntake.rotateTo(-60, vex::rotationUnits::deg, 60,vex::velocityUnits::pct, false);
+
+        //turn back to alignment
+        gyroTurn(false, 50, 50, 75);
+
+        //drive back to align with platform
+        driveMoveFor(-10, 70);
+
+        //turn to face platform
+        gyroTurn(false, 50, 50, 50);
+
+        //drive onto platform
+        driveMoveFor(45, 100);
+
+    }
+
     void backredParking(){
         resetDrive();
         driveMoveFor(20, 30);
@@ -790,21 +889,39 @@ void autonomous( void ) {
     //run auton helper task
     vex::task autoHelp(autoTask);
     
-    //all false = just 3 flag with cap flip
-    //if first bool true, 4 flag
-    //if second bool true, 5 flag
-    //if thrid bool true, parking auton
-    //(bool fourFlag, bool fiveFlag, bool park)
+    /*  all false = just 3 flag with cap flip
+        if first bool true, 4 flag
+        if second bool true, 5 flag
+        if third bool true, parking auton
+        (bool fourFlag, bool fiveFlag, bool park)
+    */
     
-    //run 3 flag function
-    threeFlagRed(false, true, false);
+    //3 flag function - red side
+    //5 flag
+      threeFlagRed(false, true, false);
+    //4 flag
+      //threeFlagRed(true, false, false);
+    //3 flag
+      //threeFlagRed(false, false, false);
+    //parking
+      //threeFlagRed(false, true, true);
 
-    //blue side
-    //threeFlagBlue(false, true, false);
 
-    //red back side
+    //3 flag function - blue side
+    //5 flag
+      //threeFlagBlue(false, true, false);
+    //4 flag
+      //threeFlagBlue(true, false, false);
+    //3 flag
+      //threeFlagBlue(false, false, false);
+    //parking
+      //threeFlagBlue(false, true, true);
 
-    //blue back side
+
+    //back side - red
+    //backredParking();
+
+    //back side - blue
     //backblueParking();
 
     //stop auto helper task
@@ -903,8 +1020,6 @@ void autonomous( void ) {
     }
 
     void liftResetDetect(){
-        
-             
                 //button for main cap flip
                 if(Controller2.ButtonDown.pressing()){
                 //wait until released
@@ -1048,10 +1163,10 @@ int liftTask(){
             BackRight.spin(vex::directionType::fwd, Controller1.Axis2.value() * .5, vex::velocityUnits::pct);
         }
         else {
-            FrontLeft.spin(vex::directionType::fwd, Controller1.Axis3.value() * .9, vex::velocityUnits::pct);
-            BackLeft.spin(vex::directionType::fwd, Controller1.Axis3.value() * .9, vex::velocityUnits::pct);
-            FrontRight.spin(vex::directionType::fwd, Controller1.Axis2.value() * .9, vex::velocityUnits::pct);
-            BackRight.spin(vex::directionType::fwd, Controller1.Axis2.value() * .9, vex::velocityUnits::pct);
+            FrontLeft.spin(vex::directionType::fwd, Controller1.Axis3.value() * 1.0, vex::velocityUnits::pct);
+            BackLeft.spin(vex::directionType::fwd, Controller1.Axis3.value() * 1.0, vex::velocityUnits::pct);
+            FrontRight.spin(vex::directionType::fwd, Controller1.Axis2.value() * 1.0, vex::velocityUnits::pct);
+            BackRight.spin(vex::directionType::fwd, Controller1.Axis2.value() * 1.0, vex::velocityUnits::pct);
         }
             
         //}
