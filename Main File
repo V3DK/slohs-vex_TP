@@ -759,7 +759,6 @@ int autoTask(){
 
     void backBlueTesting(){
         resetDrive();
-
         //drive forward
         //driveMoveFor(20, 30);
         trevo = (20 / (4 * math_Pi));
@@ -769,7 +768,7 @@ int autoTask(){
         resetDrive();
 
         //wait 7 seconds before shooting
-        vex::task::sleep(1500);
+        vex::task::sleep(500);
 
         //shoot puncher
         Puncher.rotateFor(360, vex::rotationUnits::deg, 100, vex::velocityUnits::pct, true);
@@ -891,6 +890,111 @@ int autoTask(){
         driveMoveFor(45, 100);
     }
 
+    void backRedTesting(){
+        resetDrive();
+
+        //drive forward
+        //driveMoveFor(20, 30);
+        trevo = (20 / (4 * math_Pi));
+        BackLeft.rotateFor(trevo, vex::rotationUnits::rev, 30, vex::velocityUnits::pct, false);
+        BackRight.rotateFor(trevo, vex::rotationUnits::rev, 30, vex::velocityUnits::pct, true);
+        driveCoast();
+        resetDrive();
+
+        //wait 7 seconds before shooting
+        vex::task::sleep(500);
+
+        //shoot puncher
+        Puncher.rotateFor(360, vex::rotationUnits::deg, 100, vex::velocityUnits::pct, true);
+        Puncher.stop(vex::brakeType::coast);
+
+        //drive back
+        // driveMoveFor(-20, 30);
+        trevo = (-20 / (4 * math_Pi));
+        BackLeft.rotateFor(trevo, vex::rotationUnits::rev, 70, vex::velocityUnits::pct, false);
+        BackRight.rotateFor(trevo, vex::rotationUnits::rev, 70, vex::velocityUnits::pct, true);
+        driveCoast();
+        resetDrive();
+        vex::task::sleep(150);
+
+        //turn and align for cap
+        resetDrive();
+        gyroTurn(true, 50, 50, 16);
+
+        vex::task::sleep(150);
+
+        //align against back wall
+        resetDrive();
+        
+        driveCoast();
+        driveMoveFor(-5, 50);
+        resetDrive();
+        driveCoast();
+
+        //start intake
+        Intake.spin(vex::directionType::fwd, (maxSpeed * .20), vex::velocityUnits::pct);
+
+        //drive forward and get ball
+        trevo = (52 / (4 * math_Pi));
+        BackLeft.rotateFor(trevo, vex::rotationUnits::rev, 60, vex::velocityUnits::pct, false);
+        BackRight.rotateFor(trevo, vex::rotationUnits::rev, 60, vex::velocityUnits::pct, true);
+        driveCoast();
+        resetDrive();
+
+
+        vex::task::sleep(350);
+        //drive back before turning for other low cap
+        trevo = (-13 / (4 * math_Pi));
+        BackLeft.rotateFor(trevo, vex::rotationUnits::rev, 70, vex::velocityUnits::pct, false);
+        BackRight.rotateFor(trevo, vex::rotationUnits::rev, 70, vex::velocityUnits::pct, true);
+        driveCoast();
+        resetDrive();
+        vex::task::sleep(150);
+
+        //turn so lift can flip other low cap
+        gyroTurn(false, 50, 50, 70);
+
+        //put cappy boi out
+        CapIntake.rotateTo(-385,vex::rotationUnits::deg, 100, vex::velocityUnits::pct, true);
+
+        vex::task::sleep(150);
+        resetDrive();
+
+        //drive into cap
+        trevo = (-24 / (4 * math_Pi));
+        BackLeft.rotateFor(trevo, vex::rotationUnits::rev, 70, vex::velocityUnits::pct, false);
+        BackRight.rotateFor(trevo, vex::rotationUnits::rev, 70, vex::velocityUnits::pct, true);
+        driveCoast();
+        resetDrive();     
+        vex::task::sleep(150);
+
+        //flip cap onto lexan
+        CapIntake.rotateTo(-60, vex::rotationUnits::deg, 60,vex::velocityUnits::pct);
+        //vex::task::sleep(250);
+        //CapIntake.rotateTo(-400, vex::rotationUnits::deg, 85, vex::velocityUnits::pct);
+
+        //drive back
+        driveMoveFor(15, 70);
+
+        //rotate cap boi in
+
+        //turn back to alignment
+        //gyroTurn(false, 30, 30, 30);
+
+        //drive back to align with platform
+        //driveMoveFor(-10, 70);
+
+        //turn to face platform
+        gyroTurn(true, 70, 70, 10);
+         //CapIntake.rotateTo(0, vex::rotationUnits::deg, 60,vex::velocityUnits::pct, false);
+
+        //drive onto platform
+        driveMoveFor(40, 100);
+        driveTimeout(2000, 2000);
+                Intake.spin(vex::directionType::fwd, (0 * .20), vex::velocityUnits::pct);
+
+    }
+
 void autonomous( void ) {
     //run auton helper task
     vex::task autoHelp(autoTask);
@@ -923,8 +1027,12 @@ void autonomous( void ) {
     //parking
       //threeFlagBlue(false, true, true);
 
-    //testing
-    backBlueTesting();
+    //back red testing
+    //backRedTesting();
+
+    //back blue testing
+    //backBlueTesting();
+
         
     //back side - red
     //backredParking();
@@ -1020,9 +1128,9 @@ void autonomous( void ) {
         if(liftReset){
         CapIntake.rotateTo(0,vex::rotationUnits::deg, 80,vex::velocityUnits::pct, false);
         Lift.rotateTo(0, vex::rotationUnits::deg, 85,vex::velocityUnits::pct);
-            while(CapIntake.isSpinning() && Lift.isSpinning()){
-                vex::task::sleep(50);
-            }
+            //while(CapIntake.isSpinning() && Lift.isSpinning()){
+            ////    vex::task::sleep(50);
+            //}
             liftReset = false;
         }
     }
@@ -1214,7 +1322,14 @@ int liftTask(){
                 
                 else */if(Controller1.ButtonR2.pressing()){
                     puncherIsMoving = true;
+
                     Puncher.spin(vex::directionType::fwd, maxSpeed, vex::velocityUnits::pct);
+
+                    //turn lift holding off if shooting
+                    if(liftActivate){
+                      liftActivate = false;
+                    }
+
                 }
                 
                 else {
@@ -1233,7 +1348,7 @@ int liftTask(){
                 Lift.spin(vex::directionType::fwd, maxSpeed, vex::velocityUnits::pct);
             }
         else if(Controller2.ButtonR1.pressing()){
-                    Lift.spin(vex::directionType::rev, (maxSpeed), vex::velocityUnits::pct);
+                    Lift.spin(vex::directionType::rev, (maxSpeed * .75), vex::velocityUnits::pct);
             }
         else {
             if((!liftReset) && (capTrigger))
@@ -1252,11 +1367,11 @@ int liftTask(){
     void CapIntakeControl(void){
     //button        
             if(Controller2.ButtonL2.pressing()){
-                CapIntake.spin(vex::directionType::fwd, maxSpeed * .6, vex::velocityUnits::pct);
+                CapIntake.spin(vex::directionType::fwd, maxSpeed * .45, vex::velocityUnits::pct);
             
             }
         else if(Controller2.ButtonL1.pressing()){
-                CapIntake.spin(vex::directionType::rev, maxSpeed * .6, vex::velocityUnits::pct);
+                CapIntake.spin(vex::directionType::rev, maxSpeed * .45, vex::velocityUnits::pct);
             }
         else {
             //if lift is activated, and other bools permit, run lift hold
@@ -1267,7 +1382,7 @@ int liftTask(){
         
         if(!((Controller2.ButtonL2.pressing()) || (Controller2.ButtonL1.pressing()))){
             if((!liftReset) && (!capTrigger))
-             CapIntake.spin(vex::directionType::fwd, Controller2.Axis3.value() * .6, vex::velocityUnits::pct);
+             CapIntake.spin(vex::directionType::fwd, Controller2.Axis3.value() * .5, vex::velocityUnits::pct);
         }
 
     //        CapIntake.spin(vex::directionType::fwd, Controller2.Axis3.value() * .6, vex::velocityUnits::pct);
@@ -1288,7 +1403,7 @@ void usercontrol( void ) {
   // User control code here, inside the loop
     
   //initiate task for triggers, like cap control and puncher button
-    vex::task driveTriggers(driveTask, 1);
+  vex::task driveTriggers(driveTask, 1);
   vex::task liftTriggers(liftTask, 2);
   
   //initiate task for brain and controller displays
@@ -1298,7 +1413,7 @@ void usercontrol( void ) {
         Intake.stop(vex::brakeType::coast);
         driveCoast();
     
-  while (1) {
+  while (true) {
     allRemoteFunc();                
     vex::task::sleep(20); //Sleep the task for a short amount of time to prevent wasted resources. 
   }
