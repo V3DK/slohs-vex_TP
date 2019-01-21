@@ -405,7 +405,7 @@ int autoTask(){
         //*/
 
         //drive forward and hit low flag
-        driveMoveFor(17, 45);
+        driveMoveFor(15, 45);
         driveTimeout(1, 1);
         Intake.spin(vex::directionType::rev, (25), vex::velocityUnits::pct);
 
@@ -413,7 +413,7 @@ int autoTask(){
         //driveMoveFor(5, 50);
 
         //drive back before turning to flip cap
-        driveMoveFor(-12, 50);
+        driveMoveFor(-15, 50);
         //reset lift to orig position [just in case]
         CapIntake.rotateTo(0,vex::rotationUnits::deg, 80,vex::velocityUnits::pct, false);
         Lift.rotateTo(0, vex::rotationUnits::deg, 85,vex::velocityUnits::pct);
@@ -1012,7 +1012,7 @@ void autonomous( void ) {
     //4 flag
       //threeFlagRed(true, false, false);
     //3 flag
-      //threeFlagRed(false, false, false);
+      threeFlagRed(false, false, false);
     //parking
       //threeFlagRed(false, true, true);
 
@@ -1418,7 +1418,6 @@ void usercontrol( void ) {
     vex::task::sleep(20); //Sleep the task for a short amount of time to prevent wasted resources. 
   }
 }
-
 
 int main() {
     
