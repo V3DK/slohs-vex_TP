@@ -60,7 +60,9 @@ int anglePos = 0;
 bool angleTrigger = false;
 //bool capTrigger = false;
 bool driveLockOn = false;
-//bool liftReset = false;
+bool liftReset = false;
+bool liftMedium = false;
+bool liftOn = false;
 
 //var to determine whether to use joystick or buttons for cap intake
 //bool capJoy = true;
@@ -1059,30 +1061,35 @@ void autonomous( void ) {
         if(angleTrigger){
             if(anglePos == 0){
                 angleAdjust.rotateTo(0,vex::rotationUnits::deg,100,vex::velocityUnits::pct);
+                angleAdjust.setTimeout(600, vex::timeUnits::msec);
+
                 //angleAdjust.stop(vex::brakeType::coast);
 
             }
             //medium flag
             else if(anglePos == 1){
                 angleAdjust.rotateTo(120,vex::rotationUnits::deg,100,vex::velocityUnits::pct);
+                angleAdjust.setTimeout(600, vex::timeUnits::msec);
+
 
             }
             //lowest flag
             else if(anglePos == 2){
                  angleAdjust.rotateTo(262,vex::rotationUnits::deg,100,vex::velocityUnits::pct);
+                 angleAdjust.setTimeout(600, vex::timeUnits::msec);
+
 
 
             }
-            angleAdjust.setTimeout(600, vex::timeUnits::msec);
             angleTrigger = false;
         }
     }
     
     void angleTriggerDetect(){
             //toggle between high and medium
-            if(Controller1.ButtonDown.pressing()){
+            if(Controller1.ButtonUp.pressing()){
             //wait until released
-               while(Controller1.ButtonDown.pressing()){
+               while(Controller1.ButtonUp.pressing()){
                    vex::task::sleep(100);
                }
             //run func
@@ -1093,9 +1100,9 @@ void autonomous( void ) {
             }  
 
             //lowest flag toggle
-            else if(Controller1.ButtonUp.pressing()){
+            else if(Controller1.ButtonRight.pressing()){
                 //wait until released
-               while(Controller1.ButtonUp.pressing()){
+               while(Controller1.ButtonRight.pressing()){
                    vex::task::sleep(100);
                }
             //run func
@@ -1122,56 +1129,12 @@ void autonomous( void ) {
         }
     
 
-   /* void autoCapFlip(){
-        //if in cap mode and cap trigger is clicked
-        if(capTrigger){
-            CapIntake.rotateTo(-60,vex::rotationUnits::deg, 60,vex::velocityUnits::pct);
-            CapIntake.setTimeout(750, vex::timeUnits::msec);
-
-            vex::task::sleep(250);
-            CapIntake.rotateTo(-320,vex::rotationUnits::deg, 68,vex::velocityUnits::pct);
-            CapIntake.setTimeout(1000, vex::timeUnits::msec);
-            capTrigger = false;
-        }
-    }
-
-
-      void capTriggerDetect(){
-                
-                //button for main cap flip
-                //up button
-                if(Controller2.ButtonUp.pressing()){
-                //wait until released
-                   while(Controller2.ButtonUp.pressing()){
-                       vex::task::sleep(100);
-                   }
-                //run func
-                capTrigger = true;
-                }  
-            }
-        
-        
-    void liftActivateDetect(){
-
-        //if button A is pressed
-       if(Controller2.ButtonA.pressing()){
-           //wait until released
-           while(Controller2.ButtonA.pressing()){
-               vex::task::sleep(100);
-           }
-           //run func
-           liftActivate = !liftActivate;
-          
-       }
-        
-    }
-    */
     
 
     void driveLockDetect(){
-        if(Controller1.ButtonB.pressing()){
+        if(Controller1.ButtonLeft.pressing()){
            //wait until released
-           while(Controller1.ButtonB.pressing()){
+           while(Controller1.ButtonLeft.pressing()){
                vex::task::sleep(100);
            }
            //run func
@@ -1180,31 +1143,53 @@ void autonomous( void ) {
        }
     }
 
-    /*
+    
+    //lift down
     
     void autoLiftReset(){
         if(liftReset){
-        CapIntake.rotateTo(0,vex::rotationUnits::deg, 80,vex::velocityUnits::pct, false);
         Lift.rotateTo(0, vex::rotationUnits::deg, 85,vex::velocityUnits::pct);
-            //while(CapIntake.isSpinning() && Lift.isSpinning()){
-            ////    vex::task::sleep(50);
-            //}
-            liftReset = false;
+        liftOn = false;
+        //timeout
+        liftReset = false;
         }
     }
 
     void liftResetDetect(){
-                //button for main cap flip
-                if(Controller2.ButtonDown.pressing()){
+                if(Controller1.ButtonA.pressing()){
                 //wait until released
-                   while(Controller2.ButtonDown.pressing()){
+                   while(Controller1.ButtonA.pressing()){
                        vex::task::sleep(100);
                    }
                 //run func
                 liftReset = true;
                 }  
     }
-    */
+
+
+
+    void autoLiftMedium(){
+        if(liftMedium){
+        Lift.rotateTo(360, vex::rotationUnits::deg, 85, vex::velocityUnits::pct);
+        liftOn = true;
+        //timeout
+        liftMedium = false;
+        }
+    }
+
+    void liftMediumDetect(){
+    	if(Controller1.ButtonY.pressing()){
+                //wait until released
+                   while(Controller1.ButtonY.pressing()){
+                       vex::task::sleep(100);
+                   }
+                //run func
+                liftMedium = true;
+                }  
+    }
+
+
+    
 
 
     void driveTaskFunc(){
@@ -1219,26 +1204,21 @@ void autonomous( void ) {
         //drive lock for platform
         driveLockDetect();
     }
-/*
+
 void liftTaskFunc(){
         //the functions that run in this "othertask"
         
         //actions
-        //autoCapFlip();
-        //autoLiftReset();
+        autoLiftReset();
+        autoLiftMedium();
         
         //detections
-        //switch lift into active mode
-       // liftActivateDetect();
-       // liftResetDetect();
-        
-        
-        //auto flip for cap
-        //capTriggerDetect();
+        liftResetDetect();
+        liftMediumDetect();
         
         
     }
-    */
+    
 //other task used to run puncher and cap intake triggers
     int driveTask(){
         while(true){
@@ -1248,7 +1228,7 @@ void liftTaskFunc(){
         }
         return 0;
     }
-/*
+
 int liftTask(){
         while(true){
             liftTaskFunc();
@@ -1257,7 +1237,7 @@ int liftTask(){
         }
         return 0;
     }
-*/
+
 
 
     void controllerDisplay(){
@@ -1265,10 +1245,15 @@ int liftTask(){
 
 
                     if(!driveLockOn){
-                    Controller1.Screen.setCursor(1, 18);
+                    Controller1.Screen.setCursor(3, 1);
                     //Controller1.Screen.print("               Off");
                     Controller1.Screen.print("Off");
-                }
+                	}
+                	else
+                	{
+                		Controller1.Screen.setCursor(3, 1);
+                    Controller1.Screen.print("On");
+                	}
         
                     Controller1.Screen.setCursor(1,1);
                     if(anglePos == 0){
@@ -1383,8 +1368,8 @@ int liftTask(){
                 }
                 
                 else */if(Controller1.ButtonR2.pressing()){
+    				liftOn = false;
                     puncherIsMoving = true;
-
                     Puncher.spin(vex::directionType::fwd, maxSpeed, vex::velocityUnits::pct);
 
                     //turn lift holding off if shooting
@@ -1402,59 +1387,33 @@ int liftTask(){
                 }
                 
         }
-    /*
+    
     void LiftControl(void){
-    //preset heights
-        if(Controller2.ButtonR2.pressing()){
-                Lift.spin(vex::directionType::fwd, maxSpeed, vex::velocityUnits::pct);
+
+        if(Controller1.ButtonX.pressing()){
+                Lift.spin(vex::directionType::fwd, maxSpeed * .60, vex::velocityUnits::pct);
+                liftOn = false;
             }
-        else if(Controller2.ButtonR1.pressing()){
-                    Lift.spin(vex::directionType::rev, (maxSpeed * .75), vex::velocityUnits::pct);
+        else if(Controller1.ButtonB.pressing()){
+                    Lift.spin(vex::directionType::rev, (maxSpeed * .60), vex::velocityUnits::pct);
+                    liftOn = false;
             }
-        else {
-            if((!liftReset) && (capTrigger))
+        else if((!liftMedium) && (!liftReset)){
+        	if(liftOn){
                 Lift.stop(vex::brakeType::hold);     
-
-            //if in flags mode, coast lift to protect motors
-
-            //activate lift if activate variable is true
-            else if((!liftReset) && (liftActivate))
-                Lift.stop(vex::brakeType::hold);   
-            else if(!liftReset)
-                Lift.stop(vex::brakeType::coast);
+        	}
+            else if (!liftOn){
+            	Lift.stop(vex::brakeType::coast);
+            }
+        	
         }
     
     }
-    void CapIntakeControl(void){
-    //button        
-            if(Controller2.ButtonL2.pressing()){
-                CapIntake.spin(vex::directionType::fwd, maxSpeed * .45, vex::velocityUnits::pct);
-            
-            }
-        else if(Controller2.ButtonL1.pressing()){
-                CapIntake.spin(vex::directionType::rev, maxSpeed * .45, vex::velocityUnits::pct);
-            }
-        else {
-            //if lift is activated, and other bools permit, run lift hold
-            if((!liftReset) && (!capTrigger))
-                CapIntake.stop(vex::brakeType::hold);
-        }
-//                CapIntake.spin(vex::directionType::fwd, Controller1.Axis3.value() * .6, vex::velocityUnits::pct);
         
-        if(!((Controller2.ButtonL2.pressing()) || (Controller2.ButtonL1.pressing()))){
-            if((!liftReset) && (!capTrigger))
-             CapIntake.spin(vex::directionType::fwd, Controller2.Axis3.value() * .5, vex::velocityUnits::pct);
-        }
-
-    //        CapIntake.spin(vex::directionType::fwd, Controller2.Axis3.value() * .6, vex::velocityUnits::pct);
-
-        
-        }
-        */
         
     void allRemoteFunc(void){
        // CapIntakeControl();
-       // LiftControl();
+        LiftControl();
         PuncherControl();
         IntakeControl();
         driveTrainControl();      
@@ -1465,10 +1424,10 @@ void usercontrol( void ) {
     
   //initiate task for triggers, like cap control and puncher button
   vex::task driveTriggers(driveTask, 1);
-  //vex::task liftTriggers(liftTask, 2);
+  vex::task liftTriggers(liftTask, 2);
   
   //initiate task for brain and controller displays
-  vex::task display(displayTask, 2);
+  vex::task display(displayTask, 3);
         Puncher.stop(vex::brakeType::coast);
         Intake.stop(vex::brakeType::coast);
         driveCoast();
@@ -1494,4 +1453,4 @@ int main() {
       vex::task::sleep(100);//Sleep the task for a short amount of time to prevent wasted resources.
     }    
        
-}
+}	
