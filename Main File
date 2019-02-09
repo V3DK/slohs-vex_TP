@@ -34,6 +34,8 @@ Down -
 int maxSpeed = 100;
 int trevo = 0;
 int joyVal = 0;
+
+int pLastVal = 0;
 //int test = 0;
 
 
@@ -63,11 +65,12 @@ bool driveLockOn = false;
 bool liftReset = false;
 bool liftMedium = false;
 bool liftOn = false;
+bool liftUp = false;
+bool pLoaded = false;
 
 //var to determine whether to use joystick or buttons for cap intake
 //bool capJoy = true;
 
-bool puncherIsMoving = false;
 
 //activate bool
 
@@ -1148,7 +1151,7 @@ void autonomous( void ) {
     
     void autoLiftReset(){
         if(liftReset){
-        Lift.rotateTo(0, vex::rotationUnits::deg, 85,vex::velocityUnits::pct);
+        Lift.rotateTo(0, vex::rotationUnits::deg, 85,vex::velocityUnits::pct, true);
         liftOn = false;
         //timeout
         liftReset = false;
@@ -1162,6 +1165,7 @@ void autonomous( void ) {
                        vex::task::sleep(100);
                    }
                 //run func
+                liftUp = false;
                 liftReset = true;
                 }  
     }
@@ -1170,7 +1174,7 @@ void autonomous( void ) {
 
     void autoLiftMedium(){
         if(liftMedium){
-        Lift.rotateTo(360, vex::rotationUnits::deg, 85, vex::velocityUnits::pct);
+        Lift.rotateTo(340, vex::rotationUnits::deg, 85, vex::velocityUnits::pct, true);
         liftOn = true;
         //timeout
         liftMedium = false;
@@ -1185,6 +1189,7 @@ void autonomous( void ) {
                    }
                 //run func
                 liftMedium = true;
+                liftUp = true;
                 }  
     }
 
@@ -1216,8 +1221,85 @@ void liftTaskFunc(){
         liftResetDetect();
         liftMediumDetect();
         
-        
     }
+
+    void ratchetLoad(){
+    	if(!pLoaded){
+    	if(Controller1.ButtonR1.pressing()){
+                //wait until released
+                   while(Controller1.ButtonR1.pressing()){
+                       vex::task::sleep(100);
+                   }
+                //run func
+                pLastVal += 180;
+                Puncher.rotateTo(pLastVal, vex::rotationUnits::deg, 100, vex::velocityUnits::pct, true);
+                //Puncher.stop(vex::brakeType::coast);
+                pLoaded = true;
+                }
+            }
+
+    }
+    void ratchetFire(){
+    	if(pLoaded){
+    	if(Controller1.ButtonR2.pressing()){
+                //wait until released
+                   while(Controller1.ButtonR2.pressing()){
+                       vex::task::sleep(100);
+                   }
+                //run func
+                   pLastVal += 180;
+                Puncher.rotateTo(pLastVal, vex::rotationUnits::deg, 100, vex::velocityUnits::pct, true);
+               	//Puncher.stop(vex::brakeType::coast);
+                pLoaded = false;
+                }
+            }
+
+    }
+
+    void ratchetBoth(){
+    	if(Controller1.ButtonR1.pressing()){
+                //wait until released
+                   while(Controller1.ButtonR1.pressing()){
+                       vex::task::sleep(100);
+                   }
+                //run func
+                   if(pLoaded){
+                   pLastVal += 180;
+                Puncher.rotateTo(pLastVal, vex::rotationUnits::deg, 100, vex::velocityUnits::pct, true);
+               	//Puncher.stop(vex::brakeType::coast);
+                pLoaded = false;
+                }
+            	else if(!pLoaded){
+            		pLastVal += 180;
+                Puncher.rotateTo(pLastVal, vex::rotationUnits::deg, 100, vex::velocityUnits::pct, true);
+               	//Puncher.stop(vex::brakeType::coast);
+                pLoaded = true;
+            	}
+           }
+    }
+
+    void ratchetFull(){
+    	if(Controller1.ButtonR2.pressing()){
+                //wait until released
+                   while(Controller1.ButtonR2.pressing()){
+                       vex::task::sleep(100);
+                   }
+                //run func
+                pLastVal += 360;
+                Puncher.rotateTo(pLastVal, vex::rotationUnits::deg, 100, vex::velocityUnits::pct, true);
+           }
+    }
+
+
+
+void ratchetTaskFunc(){
+	Puncher.stop(vex::brakeType::coast);
+	ratchetBoth();
+	ratchetFull();
+	//ratchetLoad();
+	//ratchetFire();
+}
+
     
 //other task used to run puncher and cap intake triggers
     int driveTask(){
@@ -1237,7 +1319,14 @@ int liftTask(){
         }
         return 0;
     }
-
+int ratchetTask(){
+	 while(true){
+            ratchetTaskFunc();
+            //to not waste resources
+            vex::task::sleep(20);
+        }
+        return 0;
+}
 
 
     void controllerDisplay(){
@@ -1271,22 +1360,20 @@ int liftTask(){
 
     void brainDisplay(){
         Brain.Screen.clearScreen();
-        /*
-            //Brain.Screen.printAt(1, 40, "%d", capTrigger);
-            //Brain.Screen.printAt(1, 120, "%d", capResetTrigger);
-            //Brain.Screen.printAt(1, 80, "%d", angleTrigger);
-            //Brain.Screen.printAt(1, 120, "%d", test);
-            Brain.Screen.printAt(1, 15, "%d", Gyro.value(vex::analogUnits::pct));
+        
+             // Brain.Screen.printAt(1, 120, "%d", test);
+              //Brain.Screen.printAt(1, 15, "%d", Gyro.value(vex::analogUnits::pct));
               Brain.Screen.printAt(1, 35, "%d", Gyro.value(vex::analogUnits::range8bit));
-              Brain.Screen.printAt(1, 55, "%d", Gyro.value(vex::analogUnits::range10bit));
-              Brain.Screen.printAt(1, 55, "%d", Gyro.value(vex::analogUnits::range12bit));
-              Brain.Screen.printAt(1, 75, "%d", Gyro.value(vex::analogUnits::mV));
+              //Brain.Screen.printAt(1, 55, "%d", Gyro.value(vex::analogUnits::range10bit));
+              //Brain.Screen.printAt(1, 55, "%d", Gyro.value(vex::analogUnits::range12bit));
+              //Brain.Screen.printAt(1, 75, "%d", Gyro.value(vex::analogUnits::mV));
             
               //Brain.Screen.printAt(1, 115, "%d", Gyro.value(vex::rotationUnits::deg));
             
-              Brain.Screen.printAt(1, 155, "%d", Gyro.value(vex::percentUnits::pct));
-              Brain.Screen.printAt(1, 180, "%d", liftReset);
-         */
+              //Brain.Screen.printAt(1, 155, "%d", Gyro.value(vex::percentUnits::pct));
+              Brain.Screen.printAt(1, 150, "%d", pLastVal);
+              Brain.Screen.printAt(1, 180, "%d", liftMedium);
+         
         //Brain.Screen.printAt(1, 40, "5flagRed");
         
         //vision sensor testing
@@ -1319,11 +1406,11 @@ int liftTask(){
         //else
         //if(driveType){
 
-        if(puncherIsMoving){
-            FrontLeft.spin(vex::directionType::fwd, Controller1.Axis3.value() * .3, vex::velocityUnits::pct);
-            BackLeft.spin(vex::directionType::fwd, Controller1.Axis3.value() * .3, vex::velocityUnits::pct);
-            FrontRight.spin(vex::directionType::fwd, Controller1.Axis2.value() * .3, vex::velocityUnits::pct);
-            BackRight.spin(vex::directionType::fwd, Controller1.Axis2.value() * .3, vex::velocityUnits::pct);
+        if(liftUp || pLoaded){
+            FrontLeft.spin(vex::directionType::fwd, Controller1.Axis3.value() * .75, vex::velocityUnits::pct);
+            BackLeft.spin(vex::directionType::fwd, Controller1.Axis3.value() * .75, vex::velocityUnits::pct);
+            FrontRight.spin(vex::directionType::fwd, Controller1.Axis2.value() * .75, vex::velocityUnits::pct);
+            BackRight.spin(vex::directionType::fwd, Controller1.Axis2.value() * .75, vex::velocityUnits::pct);
         }
         else {
             int temp = Controller1.Axis3.value();
@@ -1358,8 +1445,8 @@ int liftTask(){
             }
         }
     
-    
-    void PuncherControl(void){
+       
+   // void PuncherControl(void){
     //button  
 
                         /*
@@ -1367,16 +1454,16 @@ int liftTask(){
                     Puncher.spin(vex::directionType::rev, maxSpeed / 1.5, vex::velocityUnits::pct);
                 }
                 
-                else */if(Controller1.ButtonR2.pressing()){
+                else if(Controller1.ButtonR2.pressing()){
     				liftOn = false;
                     puncherIsMoving = true;
                     Puncher.spin(vex::directionType::fwd, maxSpeed, vex::velocityUnits::pct);
 
                     //turn lift holding off if shooting
-                    /*if(liftActivate){
+                    if(liftActivate){
                       liftActivate = false;
                     }
-                    */
+                    
 
                 }
                 
@@ -1387,15 +1474,23 @@ int liftTask(){
                 }
                 
         }
+        */
+
+        
     
     void LiftControl(void){
 
+    	if((!liftMedium) && (!liftReset)){
         if(Controller1.ButtonX.pressing()){
-                Lift.spin(vex::directionType::fwd, maxSpeed * .60, vex::velocityUnits::pct);
+                Lift.spin(vex::directionType::fwd, maxSpeed * .75, vex::velocityUnits::pct);
+                liftUp = false;
+
                 liftOn = false;
             }
         else if(Controller1.ButtonB.pressing()){
-                    Lift.spin(vex::directionType::rev, (maxSpeed * .60), vex::velocityUnits::pct);
+                    Lift.spin(vex::directionType::rev, (maxSpeed * .75), vex::velocityUnits::pct);
+                liftUp = false;
+
                     liftOn = false;
             }
         else if((!liftMedium) && (!liftReset)){
@@ -1407,14 +1502,15 @@ int liftTask(){
             }
         	
         }
-    
     }
+    }
+    
+    
         
         
     void allRemoteFunc(void){
-       // CapIntakeControl();
         LiftControl();
-        PuncherControl();
+        //PuncherControl();
         IntakeControl();
         driveTrainControl();      
     }
@@ -1423,17 +1519,21 @@ void usercontrol( void ) {
   // User control code here, inside the loop
     
   //initiate task for triggers, like cap control and puncher button
+  vex::task stop(autoTask); 
   vex::task driveTriggers(driveTask, 1);
-  vex::task liftTriggers(liftTask, 2);
+  vex::task ratchetTriggers(ratchetTask, 2);
+  vex::task liftTriggers(liftTask, 3);
   
   //initiate task for brain and controller displays
-  vex::task display(displayTask, 3);
+  vex::task display(displayTask, 4);
+
         Puncher.stop(vex::brakeType::coast);
         Intake.stop(vex::brakeType::coast);
         driveCoast();
     
   while (true) {
-    allRemoteFunc();                
+    allRemoteFunc();  
+
     vex::task::sleep(20); //Sleep the task for a short amount of time to prevent wasted resources. 
   }
 }
