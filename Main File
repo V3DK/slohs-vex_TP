@@ -36,6 +36,7 @@ int trevo = 0;
 int joyVal = 0;
 
 int pLastVal = 0;
+int autoPuncherValue = 0;
 //int test = 0;
 
 
@@ -58,9 +59,12 @@ if 0 - down (high flag)
 if 1 - middle (medium flag)
 if 2 - up (low flag)
 */
+
+bool autoRunning = false;
+
+
 int anglePos = 0;
 bool angleTrigger = false;
-//bool capTrigger = false;
 bool driveLockOn = false;
 bool liftReset = false;
 bool liftMedium = false;
@@ -72,11 +76,7 @@ bool pLoaded = false;
 //bool capJoy = true;
 
 
-//activate bool
 
-//used to tell auton helper task to pull back puncher
-bool prePuncher = false;
-int puncherPreValue = 150;
 
 //current gyro val holding var
 int currVal = 0;
@@ -87,6 +87,11 @@ void resetDrive(){
         FrontRight.resetRotation();
         BackRight.resetRotation();
     }
+
+void resetOthers(){
+    Puncher.resetRotation();
+    angleAdjust.resetRotation();
+}
 /*---------------------------------------------------------------------------*/
 /*                          Pre-Autonomous Functions                         */
 /*                                                                           */
@@ -102,6 +107,7 @@ void pre_auton( void ) {
   // Example: clearing encoders, setting servo positions, ...
     
     //resetDrive encoders
+    resetOthers();
     resetDrive();
     //calibrate gyro
     Gyro.startCalibration();
@@ -117,30 +123,6 @@ void pre_auton( void ) {
     Brain.Screen.printAt(1, 40, "Gyro Calibrated!");
  
 }
-
-//helper task for autonomous
-//used for pulling back puncher before it shoots
-int autoTask(){
-        while(true){
-            //wait until puncher preshoot is turned on
-            if(prePuncher){
-              //pull puncher back puncherPreValue degrees
-              Puncher.rotateFor(puncherPreValue, vex::rotationUnits::deg, 100,vex::velocityUnits::pct, true);
-              Puncher.stop(vex::brakeType::hold);
-
-              //reset preVal to default
-              puncherPreValue = 150;
-
-              //disable
-              prePuncher = false;
-            }
-
-            //to not waste resources
-            vex::task::sleep(20);
-        }
-        return 0;
-    }
-
     void driveCoast(){
       FrontLeft.stop(vex::brakeType::coast);
       BackLeft.stop(vex::brakeType::coast);
@@ -162,6 +144,104 @@ int autoTask(){
     //vRight - velocity of right side of drive
     //amt - amount to turn
 
+
+
+    void ratchetLoad(){
+        if(!pLoaded){
+        if(Controller1.ButtonR1.pressing()){
+                //wait until released
+                   while(Controller1.ButtonR1.pressing()){
+                       vex::task::sleep(100);
+                   }
+                //run func
+                pLastVal += 180;
+                Puncher.rotateTo(pLastVal, vex::rotationUnits::deg, 100, vex::velocityUnits::pct, true);
+                //Puncher.stop(vex::brakeType::coast);
+                pLoaded = true;
+                }
+            }
+
+    }
+    void ratchetFire(){
+        if(pLoaded){
+        if(Controller1.ButtonR2.pressing()){
+                //wait until released
+                   while(Controller1.ButtonR2.pressing()){
+                       vex::task::sleep(100);
+                   }
+                //run func
+                   pLastVal += 180;
+                Puncher.rotateTo(pLastVal, vex::rotationUnits::deg, 100, vex::velocityUnits::pct, true);
+                //Puncher.rotateTo(180, vex::rotationUnits::deg, 100, vex::velocityUnits::pct, true);
+
+                //Puncher.stop(vex::brakeType::coast);
+                pLoaded = false;
+                }
+            }
+
+    }
+
+    void ratchetBoth(){
+        if(Controller1.ButtonR1.pressing()){
+                //wait until released
+                   while(Controller1.ButtonR1.pressing()){
+                       vex::task::sleep(100);
+                   }
+                //run func
+                   if(pLoaded){
+                   pLastVal += 180;
+                Puncher.rotateTo(pLastVal, vex::rotationUnits::deg, 100, vex::velocityUnits::pct, true);
+                //Puncher.stop(vex::brakeType::coast);
+                pLoaded = false;
+                }
+                else if(!pLoaded){
+                    pLastVal += 180;
+                Puncher.rotateTo(pLastVal, vex::rotationUnits::deg, 100, vex::velocityUnits::pct, true);
+                //Puncher.stop(vex::brakeType::coast);
+                pLoaded = true;
+                }
+           }
+    }
+
+    void ratchetFull(){
+        if(Controller1.ButtonR2.pressing()){
+                //wait until released
+                   while(Controller1.ButtonR2.pressing()){
+                       vex::task::sleep(100);
+                   }
+                //run func
+                pLastVal += 360;
+                Puncher.rotateTo(pLastVal, vex::rotationUnits::deg, 100, vex::velocityUnits::pct, true);
+           }
+    }
+
+
+
+void ratchetTaskFunc(){
+    if(!autoRunning){
+    Puncher.stop(vex::brakeType::coast);
+    }
+
+    ratchetBoth();
+    ratchetFull();
+    //ratchetLoad();
+    //ratchetFire();
+}
+
+    
+//other task used to run puncher and cap intake triggers
+    
+int ratchetTask(){
+     while(true){
+            ratchetTaskFunc();
+            //to not waste resources
+            vex::task::sleep(20);
+        }
+        return 0;
+}
+
+
+
     void gyroTurn(bool rightTurn, int vLeft, int vRight, int amt){
         
         //steal the gyro's current value
@@ -178,7 +258,7 @@ int autoTask(){
             vex::task::sleep(10); 
           }
           driveHold();
-          vex::task::sleep(250);
+          vex::task::sleep(350);
           driveCoast();
         }
         //if it's a left turn, execute left turn
@@ -264,11 +344,13 @@ int autoTask(){
     //if five flag, run 3 flag with cap flip, high flag shot, and middle pole low flag
     //if park, run 3 flag with cap flip and park
     void threeFlagRed(bool fourFlag, bool fiveFlag, bool park){
+         Puncher.resetRotation();
        // int now = Gyro.value(vex::analogUnits::range8bit);
         //reset driveTrain encoders
         resetDrive();
+        resetOthers();
         //start intake
-        Intake.spin(vex::directionType::fwd, (maxSpeed * .20), vex::velocityUnits::pct);
+        Intake.spin(vex::directionType::fwd, (maxSpeed * .4), vex::velocityUnits::pct);
         /*
         FrontLeft.spin(vex::directionType::fwd, 60, vex::velocityUnits::pct);
         BackLeft.spin(vex::directionType::fwd, 60, vex::velocityUnits::pct);
@@ -276,221 +358,298 @@ int autoTask(){
         FrontRight.spin(vex::directionType::fwd, 60, vex::velocityUnits::pct);
         */
         //run drive forward for 34 inches
-        //driveMoveFor(36.5, 60);
-         float trevo = (36.5 / (4 * math_Pi));
-         BackLeft.rotateFor(trevo, vex::rotationUnits::rev, 60, vex::velocityUnits::pct, false);
-         BackRight.rotateFor(trevo, vex::rotationUnits::rev, 60, vex::velocityUnits::pct, true);
+        driveMoveFor(36, 60);
+
+        //make sure puncher is coasting
+        //Puncher.stop(vex::brakeType::coast);
+
+         //float trevo = (36.5 / (4 * math_Pi));
+        // BackLeft.rotateFor(trevo, vex::rotationUnits::rev, 60, vex::velocityUnits::pct, false);
+        // BackRight.rotateFor(trevo, vex::rotationUnits::rev, 60, vex::velocityUnits::pct, true);
         //driveMoveFor(16.5, 70);
        // driveTurnFor(36.5, 36.5, 63, 60);
         //driveTimeout(2, 2);
         
         //delay and wait for .350 of a second
-        //pick up ball
-        vex::task::sleep(350);
-        
-        
+        //pick up ball        
         //gyroTurn(true, 50, 50, abs(now - Gyro.value(vex::analogUnits::range8bit)));
         //stop intake
-        Intake.stop(vex::brakeType::coast); 
+        vex ::task::sleep(150); 
+        //Intake.spin(vex::directionType::fwd, (0), vex::velocityUnits::pct);
+        Intake.spin(vex::directionType::fwd, (maxSpeed * .5), vex::velocityUnits::pct);
+
         //vex::task::sleep(200);
         
         //drive back 46 inches
         //hit field wall and realign
-        //driveMoveFor(-46, 85);
+        
         resetDrive();
-        trevo = (-48 / (4 * math_Pi));
-         BackLeft.rotateFor(trevo, vex::rotationUnits::rev, 60, vex::velocityUnits::pct, false);
-         BackRight.rotateFor(trevo, vex::rotationUnits::rev, 60, vex::velocityUnits::pct, true);
-        //driveTurnFor(-48, -46.5, 88, 95);
-        driveTimeout(2, 2);
+       // driveMoveFor(-44, 100);
+        Lift.rotateTo(340, vex::rotationUnits::deg, 85, vex::velocityUnits::pct, false);
+        Lift.setTimeout(1000, vex::timeUnits::msec);
+        driveTurnFor(-46, -46.5, 80, 75);
+        Lift.stop(vex::brakeType::hold);
+        driveTimeout(3, 3);
 
+        vex::task::sleep(150);
+      
+
+         //trevo = (-48 / (4 * math_Pi));
+         //BackLeft.rotateFor(trevo, vex::rotationUnits::rev, 60, vex::velocityUnits::pct, false);
+         //BackRight.rotateFor(trevo, vex::rotationUnits::rev, 60, vex::velocityUnits::pct, true);
+        //driveTurnFor(-48, -46.5, 88, 95);
         //reset drive after realigning
         resetDrive();
 
         //vex::task::sleep(200);
 
-        //pull back puncher to pre shoot with default value of 150
-        prePuncher = true;
-        //puncher now in pre shoot position
+        
 
         //drive forward 10 inches for flag alignment before turning
-        driveMoveFor(11, 45);
+        Puncher.rotateTo(180, vex::rotationUnits::deg, 100, vex::velocityUnits::pct, false);
+        Puncher.setTimeout(600, vex::timeUnits::msec);
+        driveMoveFor(8.75, 45);
+        Intake.rotateFor(-2, vex::rotationUnits::rev, (maxSpeed), vex::velocityUnits::pct, false);
+        Intake.setTimeout(1000, vex::timeUnits::msec);
+
+        Lift.rotateTo(0, vex::rotationUnits::deg, 85, vex::velocityUnits::pct, false);
+        Lift.setTimeout(1000, vex::timeUnits::msec);
         driveTimeout(1, 1);
+        
+
 
         //using gyro turn left to align with flags
 
         //start drive motors
-        FrontLeft.spin(vex::directionType::rev, 40, vex::velocityUnits::pct);
-        BackLeft.spin(vex::directionType::rev, 40, vex::velocityUnits::pct);
-        BackRight.spin(vex::directionType::fwd, 40, vex::velocityUnits::pct);
-        FrontRight.spin(vex::directionType::fwd, 40, vex::velocityUnits::pct);
-        currVal = Gyro.value(vex::analogUnits::range8bit);
+        FrontLeft.spin(vex::directionType::rev, 60, vex::velocityUnits::pct);
+        BackLeft.spin(vex::directionType::rev, 60, vex::velocityUnits::pct);
+        BackRight.spin(vex::directionType::fwd, 60, vex::velocityUnits::pct);
+        FrontRight.spin(vex::directionType::fwd, 60, vex::velocityUnits::pct);
+        currVal = Gyro.value(vex::analogUnits::range12bit);
 
-        while(((Gyro.value(vex::analogUnits::range8bit)) - currVal) > -50){
+        while(((Gyro.value(vex::analogUnits::range12bit)) - currVal) > -920){
            vex::task::sleep(10); 
         }
         //stop motors with PID
         driveHold();
-        driveTimeout(1, 1);
-
+        driveTimeout(2, 2); 
         //stop motors and put them on coast
-        vex::task::sleep(250);
+        vex::task::sleep(150);
         driveCoast();
 
         ////drive forward to align front and back for top flag - puncher has already started
         //drive forward to align front and back for top flag - puncher has already preloaded
-        driveMoveFor(2, 50);
-        driveTimeout(1, 1);
+                Lift.stop(vex::brakeType::coast);
+
+        driveMoveFor(7, 50);
+        driveTimeout(2, 2);
 
         //pull back slipgear just enough to shoot
-        Puncher.rotateFor(90, vex::rotationUnits::deg, 100, vex::velocityUnits::pct, true);
-        Puncher.stop(vex::brakeType::hold);
-
-        //pre pull back puncher again but with preValue as 270 to compensate
-        //since first pull back was 150, and fire was 90, puncher was at 240 out of 360
-        //the remaining 120 and the beginning 150 of the pull back are grouped to make 270
-
-        puncherPreValue = 270;
-        prePuncher = true;
-
+        Puncher.rotateTo(540, vex::rotationUnits::deg, 100, vex::velocityUnits::pct, true);
+        Puncher.setTimeout(1000, vex::timeUnits::msec);
+        Puncher.stop(vex::brakeType::coast);
+        //get next ball up
+        Intake.rotateFor(5, vex::rotationUnits::rev, (maxSpeed * .80), vex::velocityUnits::pct, false);
         vex::task::sleep(100);
+        angleAdjust.rotateTo(120, vex::rotationUnits::deg,100,vex::velocityUnits::pct, true);
+        angleAdjust.stop(vex::brakeType::hold);
+        //angleAdjust.setTimeout(600, vex::timeUnits::msec);
+        
+        vex::task::sleep(150);
+
+        Puncher.rotateTo(720, vex::rotationUnits::deg, 100, vex::velocityUnits::pct, true);
+        Puncher.setTimeout(1000, vex::timeUnits::msec);
+        Puncher.stop(vex::brakeType::coast);
+
+       // vex::task::sleep(2000);
+
+        angleAdjust.rotateTo(0,vex::rotationUnits::deg,100,vex::velocityUnits::pct, false);
+        angleAdjust.setTimeout(600, vex::timeUnits::msec);
+        //vex::task::sleep(100);
+        Intake.spin(vex::directionType::fwd, (maxSpeed), vex::velocityUnits::pct);
+
 
         //run intake to get next ball
-        Intake.rotateFor(3, vex::rotationUnits::rev, (maxSpeed * .66), vex::velocityUnits::pct, false);
 
         //drive forward to next position for medium flag
         //driveMoveFor(21, 65); 
         
         driveCoast();
         resetDrive();
-        trevo = (21 / (4 * math_Pi));
-         FrontLeft.spin(vex::directionType::rev, 0, vex::velocityUnits::pct);
-        BackLeft.spin(vex::directionType::rev, 0, vex::velocityUnits::pct);
-        BackRight.spin(vex::directionType::fwd, 0, vex::velocityUnits::pct);
-        FrontRight.spin(vex::directionType::fwd, 0, vex::velocityUnits::pct);
+
+        //gyroTurn(false, 40, 40, 2);
+        FrontLeft.spin(vex::directionType::rev, 40, vex::velocityUnits::pct);
+        BackLeft.spin(vex::directionType::rev, 40, vex::velocityUnits::pct);
+        BackRight.spin(vex::directionType::fwd, 40, vex::velocityUnits::pct);
+        FrontRight.spin(vex::directionType::fwd, 40, vex::velocityUnits::pct);
+        currVal = Gyro.value(vex::analogUnits::range12bit);
+
+        while(((Gyro.value(vex::analogUnits::range12bit)) - currVal) > -90){
+           vex::task::sleep(10); 
+        }
+        //stop motors with PID
+        driveHold();
+        driveTimeout(2, 2); 
+        //stop motors and put them on coast
+        vex::task::sleep(400);
+        driveCoast();
         
+        resetDrive();
+        vex::task::sleep(100);
+        
+        driveMoveFor(15.5, 80);
+        vex::task::sleep(150);
+        resetDrive();
+
+        //gyroTurn(false, 40, 40, 2);
+        FrontLeft.spin(vex::directionType::fwd, 40, vex::velocityUnits::pct);
+        BackLeft.spin(vex::directionType::fwd, 40, vex::velocityUnits::pct);
+        BackRight.spin(vex::directionType::rev, 40, vex::velocityUnits::pct);
+        FrontRight.spin(vex::directionType::rev, 40, vex::velocityUnits::pct);
+        currVal = Gyro.value(vex::analogUnits::range12bit);
+
+        while(((Gyro.value(vex::analogUnits::range12bit)) - currVal) < 80){
+           vex::task::sleep(10); 
+        }
+        //stop motors with PID
+        driveHold();
+        driveTimeout(2, 2); 
+        //stop motors and put them on coast
+        vex::task::sleep(400);
+        driveCoast();
+
+        resetDrive();
+        vex::task::sleep(150);
+        //driveMoveFor(23, 70);
+        driveTurnFor(21, 23, 63, 70);
+
+        
+        //driveTurnFor(120, 118, 70, 69);
+        vex::task::sleep(250);
+        //gyroTurn(true, 30, 30, 4);
+        //gyroTurn(true, 40, 40, 2);
+        //driveMoveFor(22, 75);
+
         //vex::task::sleep(2000);
+         ///trevo = (75 / (4 * math_Pi));
         
-        BackRight.rotateFor(trevo * .95, vex::rotationUnits::rev, 45, vex::velocityUnits::pct, false);
-        BackLeft.rotateFor(trevo, vex::rotationUnits::rev, 45, vex::velocityUnits::pct, true);
+      //  BackRight.rotateFor(trevo, vex::rotationUnits::rev, 45, vex::velocityUnits::pct, false);
+      //  BackLeft.rotateFor(trevo, vex::rotationUnits::rev, 45, vex::velocityUnits::pct, true);
         //vex::task::sleep(5000);
         //driveTurnFor(-48, -46.5, 88, 95);
         
-        driveTimeout(1, 1);
-        //driveTurnFor(24, 23.5, 70, 65);
-        //driveTimeout(1.5, 1.5);
-        //gyroTurn(true, 50, 50, 1);
-        vex::task::sleep(250);
-        //trigger puncher for medium flag shot - already in shooting position
-        Puncher.rotateFor(90, vex::rotationUnits::deg, 100, vex::velocityUnits::pct, true);
-        Puncher.stop(vex::brakeType::hold);
-
-        //run puncher for 120 degrees to reset to start position - blocking off, so does this while turning and driving
-        Puncher.rotateFor(120, vex::rotationUnits::deg, 100, vex::velocityUnits::pct, false);
         
-
-        //start intake again to recycle any balls laying around
-        Intake.spin(vex::directionType::fwd, (maxSpeed * .66), vex::velocityUnits::pct);
-        
-        //vex::task::sleep(2000);
-
-        vex::task::sleep(100);
-        //turn for low flags
-        /*
-        gyroTurn(false, 50, 50, 4);
-        Puncher.stop(vex::brakeType::coast);
-        driveMoveFor(15, 70);
-        gyroTurn(true, 50, 50, 4);
-        */
-        ///*
-        gyroTurn(false, 50, 50, 8);
-        
-        //drive at an angle before turning back to straight
-        driveMoveFor(11, 50);
-
-        //now that puncher is in reset position, stop mode can be coast to protect motors
-        Puncher.stop(vex::brakeType::coast);
-
-        //turn right to become straight again before hitting low flag
-        gyroTurn(true, 50, 50, 8);
-        //*/
-
-        //drive forward and hit low flag
-        driveMoveFor(15, 45);
-        driveTimeout(1, 1);
-        Intake.spin(vex::directionType::rev, (25), vex::velocityUnits::pct);
-
-        //go slow and recycle low balls
-        //driveMoveFor(5, 50);
+     //   Puncher.stop(vex::brakeType::coast);
 
         //drive back before turning to flip cap
-        driveMoveFor(-15, 50);
+        driveMoveFor(-17, 65);
         //reset lift to orig position [just in case]
        // CapIntake.rotateTo(0,vex::rotationUnits::deg, 80,vex::velocityUnits::pct, false);
        // Lift.rotateTo(0, vex::rotationUnits::deg, 85,vex::velocityUnits::pct);
             
         
         //Puncher.rotateFor(150, vex::rotationUnits::deg, 100, vex::velocityUnits::pct, false);
-        Intake.spin(vex::directionType::rev, (0), vex::velocityUnits::pct);
         //turn to face towards low cap
-        gyroTurn(true, 50, 50, 66);
+        gyroTurn(true, 50, 50, 60);
 
         //start intake running backwards to flip cap
-        Intake.spin(vex::directionType::rev, (maxSpeed * .85), vex::velocityUnits::pct);
+        Intake.spin(vex::directionType::rev, (maxSpeed * 1), vex::velocityUnits::pct);
         //void threeFlagRed(bool fourFlag, bool fiveFlag, bool park){
 
         if(park){
           //drive and flip cap
-          driveMoveFor(55, 70);
-          driveTimeout(1.5, 1.5);
+         driveMoveFor(33, 100);
+         driveTimeout(1.5, 1.5);
 
-          //turn and face platform
-          gyroTurn(true, 75, 75, 35);
-          driveMoveFor(52, 100);
-          driveTimeout(1.5, 1.5);
+
         }
         else if(fourFlag){
           //drive forward to flip cap and drive enough for next shot
-          driveMoveFor(52, 70);
-          driveTimeout(2, 2);
+          
+            Puncher.rotateTo(900, vex::rotationUnits::deg, 100, vex::velocityUnits::pct, false);
+            Puncher.setTimeout(600, vex::timeUnits::msec);
+          driveMoveFor(33, 100);
+          driveTimeout(1.5, 1.5);
+          //vex::task::sleep(100);
           resetDrive();
-          //turn and align for high flag
-          gyroTurn(false, 50, 50, 34.5);
-          //forward and hit low flag 
-          driveMoveFor(34, 100);
-          driveTimeout(1, 1);
+
+            angleAdjust.rotateTo(120,vex::rotationUnits::deg,100,vex::velocityUnits::pct, false);
+            angleAdjust.setTimeout(600, vex::timeUnits::msec);
+
+           FrontLeft.spin(vex::directionType::rev, 40, vex::velocityUnits::pct);
+            BackLeft.spin(vex::directionType::rev, 40, vex::velocityUnits::pct);
+            BackRight.spin(vex::directionType::fwd, 40, vex::velocityUnits::pct);
+            FrontRight.spin(vex::directionType::fwd, 40, vex::velocityUnits::pct);
+            currVal = Gyro.value(vex::analogUnits::range12bit);
+
+        while(((Gyro.value(vex::analogUnits::range12bit)) - currVal) > -600){
+           vex::task::sleep(10); 
+        }
+        //stop motors with PID
+        driveHold();
+        driveTimeout(2, 2); 
+        //stop motors and put them on coast
+        vex::task::sleep(250);
+        driveCoast();
+
+
+
+        Puncher.rotateTo(1100, vex::rotationUnits::deg, 100, vex::velocityUnits::pct, true);
+        angleAdjust.rotateTo(0,vex::rotationUnits::deg,100,vex::velocityUnits::pct, false);
+        angleAdjust.setTimeout(600, vex::timeUnits::msec);
+        driveCoast();
 
         }
         else if(fiveFlag){
-          puncherPreValue = 175;
-          prePuncher = true;
 
-          //drive forward to flip cap and drive enough for next shot
-          driveMoveFor(52, 70);
-          driveTimeout(2, 2);
+            Puncher.rotateTo(900, vex::rotationUnits::deg, 100, vex::velocityUnits::pct, false);
+            Puncher.setTimeout(600, vex::timeUnits::msec);
+          driveMoveFor(33, 100);
+          driveTimeout(1.5, 1.5);
+          //vex::task::sleep(100);
+          resetDrive();
 
-          //turn and align for high flag
-          gyroTurn(false, 50, 50, 33);
+            angleAdjust.rotateTo(120,vex::rotationUnits::deg,100,vex::velocityUnits::pct, false);
+            angleAdjust.setTimeout(600, vex::timeUnits::msec);
 
-          //trigger puncher to shoot high flag - already in position
-          Puncher.rotateFor(110, vex::rotationUnits::deg, 100, vex::velocityUnits::pct, true);
-          Puncher.stop(vex::brakeType::hold);
-  
-          //run puncher for 120 degrees to reset to start position - blocking off, so does this while turning and driving
-          Puncher.rotateFor(105, vex::rotationUnits::deg, 100, vex::velocityUnits::pct, false);
+           FrontLeft.spin(vex::directionType::rev, 40, vex::velocityUnits::pct);
+            BackLeft.spin(vex::directionType::rev, 40, vex::velocityUnits::pct);
+            BackRight.spin(vex::directionType::fwd, 40, vex::velocityUnits::pct);
+            FrontRight.spin(vex::directionType::fwd, 40, vex::velocityUnits::pct);
+            currVal = Gyro.value(vex::analogUnits::range12bit);
 
-          //gyroTurn(false, 100, 100, 1);
-          //driveMoveFor(33, 100);
-          driveTurnFor(33, 36, 49, 70);
-  
-            //now that puncher has reset position, brake type coast can be applied
-          Puncher.stop(vex::brakeType::coast);
-            puncherPreValue = 150;
+        while(((Gyro.value(vex::analogUnits::range12bit)) - currVal) > -600){
+           vex::task::sleep(10); 
+        }
+        //stop motors with PID
+        driveHold();
+        driveTimeout(2, 2); 
+        //stop motors and put them on coast
+        vex::task::sleep(250);
+        driveCoast();
+
+
+
+        Puncher.rotateTo(1100, vex::rotationUnits::deg, 100, vex::velocityUnits::pct, true);
+        angleAdjust.rotateTo(0,vex::rotationUnits::deg,100,vex::velocityUnits::pct, false);
+        angleAdjust.setTimeout(600, vex::timeUnits::msec);
+        vex::task::sleep(150);
+
+        driveTurnFor(25, 30, 75, 100);
+
+        driveCoast();
+
+           // Lift.setTimeout(600, vex::timeUnits::msec);
+            
+            //vex::task::sleep(2000);
+            //driveMoveFor(-100, 100);
+            // Lift.rotateTo(0, vex::rotationUnits::deg, 85, vex::velocityUnits::pct, true);
+
         }
         //none
         else {
-          driveMoveFor(30, 70);
-          driveTimeout(1.5, 1.5);
+          driveMoveFor(33, 100);
+         driveTimeout(1.5, 1.5);
         }
 
         //end of auton stuff
@@ -514,11 +673,13 @@ int autoTask(){
     //if five flag, run 3 flag with cap flip, high flag shot, and middle pole low flag
     //if park, run 3 flag with cap flip and park
     void threeFlagBlue(bool fourFlag, bool fiveFlag, bool park){
+        Puncher.resetRotation();
        // int now = Gyro.value(vex::analogUnits::range8bit);
         //reset driveTrain encoders
         resetDrive();
+        resetOthers();
         //start intake
-        Intake.spin(vex::directionType::fwd, (maxSpeed * .20), vex::velocityUnits::pct);
+        Intake.spin(vex::directionType::fwd, (maxSpeed * .4), vex::velocityUnits::pct);
         /*
         FrontLeft.spin(vex::directionType::fwd, 60, vex::velocityUnits::pct);
         BackLeft.spin(vex::directionType::fwd, 60, vex::velocityUnits::pct);
@@ -526,213 +687,296 @@ int autoTask(){
         FrontRight.spin(vex::directionType::fwd, 60, vex::velocityUnits::pct);
         */
         //run drive forward for 34 inches
-        //driveMoveFor(36.5, 60);
-         float trevo = (36.5 / (4 * math_Pi));
-         BackLeft.rotateFor(trevo, vex::rotationUnits::rev, 60, vex::velocityUnits::pct, false);
-         BackRight.rotateFor(trevo, vex::rotationUnits::rev, 60, vex::velocityUnits::pct, true);
+        driveMoveFor(36, 60);
+
+        //make sure puncher is coasting
+        //Puncher.stop(vex::brakeType::coast);
+
+         //float trevo = (36.5 / (4 * math_Pi));
+        // BackLeft.rotateFor(trevo, vex::rotationUnits::rev, 60, vex::velocityUnits::pct, false);
+        // BackRight.rotateFor(trevo, vex::rotationUnits::rev, 60, vex::velocityUnits::pct, true);
         //driveMoveFor(16.5, 70);
        // driveTurnFor(36.5, 36.5, 63, 60);
         //driveTimeout(2, 2);
         
         //delay and wait for .350 of a second
-        //pick up ball
-        vex::task::sleep(350);
-        
+        //pick up ball        
         //gyroTurn(true, 50, 50, abs(now - Gyro.value(vex::analogUnits::range8bit)));
         //stop intake
-        Intake.stop(vex::brakeType::coast); 
+        vex ::task::sleep(150); 
+        //Intake.spin(vex::directionType::fwd, (0), vex::velocityUnits::pct);
+        Intake.spin(vex::directionType::fwd, (maxSpeed * .5), vex::velocityUnits::pct);
+
         //vex::task::sleep(200);
         
         //drive back 46 inches
         //hit field wall and realign
-        //driveMoveFor(-46, 85);
+        
         resetDrive();
-        trevo = (-48 / (4 * math_Pi));
-        BackLeft.rotateFor(trevo, vex::rotationUnits::rev, 75, vex::velocityUnits::pct, false);
-        BackRight.rotateFor(trevo, vex::rotationUnits::rev, 75, vex::velocityUnits::pct, true);
-        //driveTurnFor(-48, -46.5, 88, 95);
+       // driveMoveFor(-44, 100);
+        Lift.rotateTo(340, vex::rotationUnits::deg, 85, vex::velocityUnits::pct, false);
+        Lift.setTimeout(1000, vex::timeUnits::msec);
+        driveTurnFor(-45, -45.5, 80, 75);
+        Lift.stop(vex::brakeType::hold);
         driveTimeout(3, 3);
 
+        vex::task::sleep(150);
+      
+
+         //trevo = (-48 / (4 * math_Pi));
+         //BackLeft.rotateFor(trevo, vex::rotationUnits::rev, 60, vex::velocityUnits::pct, false);
+         //BackRight.rotateFor(trevo, vex::rotationUnits::rev, 60, vex::velocityUnits::pct, true);
+        //driveTurnFor(-48, -46.5, 88, 95);
         //reset drive after realigning
         resetDrive();
 
         //vex::task::sleep(200);
 
-        //pull back puncher to pre shoot with default value of 150
-        prePuncher = true;
-        //puncher now in pre shoot position
+        
 
         //drive forward 10 inches for flag alignment before turning
-        driveMoveFor(10.5, 35);
+        Intake.spin(vex::directionType::fwd, (maxSpeed * 0), vex::velocityUnits::pct);
+
+        Puncher.rotateTo(180, vex::rotationUnits::deg, 100, vex::velocityUnits::pct, false);
+        Puncher.setTimeout(600, vex::timeUnits::msec);
+        driveMoveFor(8.75, 45);
+        Intake.rotateFor(-2, vex::rotationUnits::rev, (maxSpeed), vex::velocityUnits::pct, false);
+        Intake.setTimeout(1000, vex::timeUnits::msec);
+
+        Lift.rotateTo(0, vex::rotationUnits::deg, 85, vex::velocityUnits::pct, false);
+        Lift.setTimeout(1000, vex::timeUnits::msec);
         driveTimeout(1, 1);
+        
+
 
         //using gyro turn left to align with flags
 
         //start drive motors
-        FrontLeft.spin(vex::directionType::fwd, 40, vex::velocityUnits::pct);
-        BackLeft.spin(vex::directionType::fwd, 40, vex::velocityUnits::pct);
-        BackRight.spin(vex::directionType::rev, 40, vex::velocityUnits::pct);
-        FrontRight.spin(vex::directionType::rev, 40, vex::velocityUnits::pct);
-        currVal = Gyro.value(vex::analogUnits::range8bit);
+        FrontLeft.spin(vex::directionType::fwd, 60, vex::velocityUnits::pct);
+        BackLeft.spin(vex::directionType::fwd, 60, vex::velocityUnits::pct);
+        BackRight.spin(vex::directionType::rev, 60, vex::velocityUnits::pct);
+        FrontRight.spin(vex::directionType::rev, 60, vex::velocityUnits::pct);
+        currVal = Gyro.value(vex::analogUnits::range12bit);
 
-        while(((Gyro.value(vex::analogUnits::range8bit)) - currVal) < 53){
-           vex::task::sleep(10); 
+        while(((Gyro.value(vex::analogUnits::range12bit)) - currVal) < 860){
+           vex::task::sleep(5); 
         }
         //stop motors with PID
         driveHold();
-        driveTimeout(1, 1);
-
+        driveTimeout(2, 2); 
         //stop motors and put them on coast
-        vex::task::sleep(250);
+        vex::task::sleep(300);
         driveCoast();
 
         ////drive forward to align front and back for top flag - puncher has already started
         //drive forward to align front and back for top flag - puncher has already preloaded
-        driveMoveFor(2, 50);
-        driveTimeout(1, 1);
+        Lift.stop(vex::brakeType::coast);
+
+        driveMoveFor(7, 50);
+        driveTimeout(2, 2);
 
         //pull back slipgear just enough to shoot
-        Puncher.rotateFor(90, vex::rotationUnits::deg, 100, vex::velocityUnits::pct, true);
-        Puncher.stop(vex::brakeType::hold);
-
-        //pre pull back puncher again but with preValue as 270 to compensate
-        //since first pull back was 150, and fire was 90, puncher was at 240 out of 360
-        //the remaining 120 and the beginning 150 of the pull back are grouped to make 270
-
-        puncherPreValue = 270;
-        prePuncher = true;
-
+        Puncher.rotateTo(540, vex::rotationUnits::deg, 100, vex::velocityUnits::pct, true);
+        Puncher.setTimeout(1000, vex::timeUnits::msec);
+        Puncher.stop(vex::brakeType::coast);
+        //get next ball up
+        Intake.rotateFor(5, vex::rotationUnits::rev, (maxSpeed * .80), vex::velocityUnits::pct, false);
         vex::task::sleep(100);
+        angleAdjust.rotateTo(120, vex::rotationUnits::deg,100,vex::velocityUnits::pct, true);
+        angleAdjust.stop(vex::brakeType::hold);
+        //angleAdjust.setTimeout(600, vex::timeUnits::msec);
+        
+        Puncher.rotateTo(720, vex::rotationUnits::deg, 100, vex::velocityUnits::pct, true);
+        Puncher.setTimeout(1000, vex::timeUnits::msec);
+        Puncher.stop(vex::brakeType::coast);
+
+       // vex::task::sleep(2000);
+
+        angleAdjust.rotateTo(0,vex::rotationUnits::deg,100,vex::velocityUnits::pct, false);
+        angleAdjust.setTimeout(600, vex::timeUnits::msec);
+        //vex::task::sleep(100);
+        Intake.spin(vex::directionType::fwd, (maxSpeed), vex::velocityUnits::pct);
+
 
         //run intake to get next ball
-        Intake.rotateFor(3, vex::rotationUnits::rev, (maxSpeed * .5), vex::velocityUnits::pct, false);
 
         //drive forward to next position for medium flag
-        //driveMoveFor(21, 60);
-        resetDrive();
+        //driveMoveFor(21, 65); 
+        
         driveCoast();
-        FrontLeft.spin(vex::directionType::fwd, 0, vex::velocityUnits::pct);
-        BackLeft.spin(vex::directionType::fwd, 0, vex::velocityUnits::pct);
-        BackRight.spin(vex::directionType::fwd, 0, vex::velocityUnits::pct);
-        FrontRight.spin(vex::directionType::fwd, 0, vex::velocityUnits::pct);
-        trevo = (19 / (4 * math_Pi));
+        resetDrive();
+
+        //gyroTurn(false, 40, 40, 2);
+        FrontLeft.spin(vex::directionType::fwd, 40, vex::velocityUnits::pct);
+        BackLeft.spin(vex::directionType::fwd, 40, vex::velocityUnits::pct);
+        BackRight.spin(vex::directionType::rev, 40, vex::velocityUnits::pct);
+        FrontRight.spin(vex::directionType::rev, 40, vex::velocityUnits::pct);
+        currVal = Gyro.value(vex::analogUnits::range12bit);
+
+        while(((Gyro.value(vex::analogUnits::range12bit)) - currVal) < 90){
+           vex::task::sleep(10); 
+        }
+        //stop motors with PID
+        driveHold();
+        driveTimeout(2, 2); 
+        //stop motors and put them on coast
+        vex::task::sleep(400);
+        driveCoast();
         
-        BackLeft.rotateFor(trevo, vex::rotationUnits::rev, 75, vex::velocityUnits::pct, false);
-        BackRight.rotateFor(trevo, vex::rotationUnits::rev, 75, vex::velocityUnits::pct, true);
-        driveTimeout(1, 1);
-        
-
-        vex::task::sleep(250);
-        //trigger puncher for medium flag shot - already in shooting position
-        Puncher.rotateFor(90, vex::rotationUnits::deg, 100, vex::velocityUnits::pct, true);
-        Puncher.stop(vex::brakeType::hold);
-
-        //run puncher for 120 degrees to reset to start position - blocking off, so does this while turning and driving
-        Puncher.rotateFor(120, vex::rotationUnits::deg, 100, vex::velocityUnits::pct, false);
-
-        //start intake again to recycle any balls laying around
-        Intake.spin(vex::directionType::fwd, (maxSpeed * .66), vex::velocityUnits::pct);
-        
-        //vex::task::sleep(2000);
-
+        resetDrive();
         vex::task::sleep(100);
-        //turn for low flags
-        /*
-        gyroTurn(false, 50, 50, 4);
-        Puncher.stop(vex::brakeType::coast);
-        driveMoveFor(15, 70);
-        gyroTurn(true, 50, 50, 4);
-        */
-        ///*
-        //first low flag turn
-        gyroTurn(true, 50, 50, 6);
         
-        //drive at an angle before turning back to straight
-        driveMoveFor(5.2, 50);
+        driveMoveFor(15.5, 80);
+        resetDrive();
 
-        //now that puncher is in reset position, stop mode can be coast to protect motors
-        Puncher.stop(vex::brakeType::coast);
+        //gyroTurn(false, 40, 40, 2);
+        FrontLeft.spin(vex::directionType::rev, 40, vex::velocityUnits::pct);
+        BackLeft.spin(vex::directionType::rev, 40, vex::velocityUnits::pct);
+        BackRight.spin(vex::directionType::fwd, 40, vex::velocityUnits::pct);
+        FrontRight.spin(vex::directionType::fwd, 40, vex::velocityUnits::pct);
+        currVal = Gyro.value(vex::analogUnits::range12bit);
 
-        //turn right to become straight again before hitting low flag
-        gyroTurn(false, 50, 50, 6);
-        //*/
+        while(((Gyro.value(vex::analogUnits::range12bit)) - currVal) > -80){
+           vex::task::sleep(10); 
+        }
+        //stop motors with PID
+        driveHold();
+        driveTimeout(2, 2); 
+        //stop motors and put them on coast
+        vex::task::sleep(400);
+        driveCoast();
 
-        //drive forward and hit low flag
-        driveMoveFor(22, 75);
+        resetDrive();
+        //driveMoveFor(23, 70);
+        driveTurnFor(21, 23, 63, 70);
 
-        //go slow and recycle low balls
-        //driveMoveFor(5, 50);
+        
+        //driveTurnFor(120, 118, 70, 69);
+        vex::task::sleep(250);
+        //gyroTurn(true, 30, 30, 4);
+        //gyroTurn(true, 40, 40, 2);
+        //driveMoveFor(22, 75);
+
+        //vex::task::sleep(2000);
+         ///trevo = (75 / (4 * math_Pi));
+        
+      //  BackRight.rotateFor(trevo, vex::rotationUnits::rev, 45, vex::velocityUnits::pct, false);
+      //  BackLeft.rotateFor(trevo, vex::rotationUnits::rev, 45, vex::velocityUnits::pct, true);
+        //vex::task::sleep(5000);
+        //driveTurnFor(-48, -46.5, 88, 95);
+        
+        
+     //   Puncher.stop(vex::brakeType::coast);
 
         //drive back before turning to flip cap
-        Intake.spin(vex::directionType::rev, (maxSpeed * .25), vex::velocityUnits::pct);
-        driveMoveFor(-15, 75);
+        driveMoveFor(-17, 65);
         //reset lift to orig position [just in case]
        // CapIntake.rotateTo(0,vex::rotationUnits::deg, 80,vex::velocityUnits::pct, false);
        // Lift.rotateTo(0, vex::rotationUnits::deg, 85,vex::velocityUnits::pct);
             
+        
+        //Puncher.rotateFor(150, vex::rotationUnits::deg, 100, vex::velocityUnits::pct, false);
         //turn to face towards low cap
-        gyroTurn(false, 50, 50, 67);
+        gyroTurn(false, 50, 50, 70);
 
         //start intake running backwards to flip cap
-        Intake.spin(vex::directionType::rev, (maxSpeed * .75), vex::velocityUnits::pct);
+        Intake.spin(vex::directionType::rev, (maxSpeed * 1), vex::velocityUnits::pct);
         //void threeFlagRed(bool fourFlag, bool fiveFlag, bool park){
 
         if(park){
           //drive and flip cap
-          driveMoveFor(52, 70);
+          driveMoveFor(30, 100);
           driveTimeout(1.5, 1.5);
 
-          //turn and face platform
-          gyroTurn(false, 75, 75, 45);
-          driveMoveFor(52, 100);
-          driveTimeout(2, 2);
         }
         else if(fourFlag){
-            //drive forward to flip cap and drive enough for next shot
-          driveMoveFor(52, 70);
-          driveTimeout(2, 2);
+          //drive forward to flip cap and drive enough for next shot
+         Puncher.rotateTo(900, vex::rotationUnits::deg, 100, vex::velocityUnits::pct, false);
+            Puncher.setTimeout(600, vex::timeUnits::msec);
+          driveMoveFor(25, 100);
+          driveTimeout(1.5, 1.5);
+          //vex::task::sleep(100);
           resetDrive();
-          //turn and align for low flag
-          gyroTurn(true, 50, 50, 39);
-        
 
-          //forward and hit low flag 
-          driveMoveFor(34, 100);
-          driveTimeout(1, 1);
-          //driveTurnFor(31, 22, 100, 70);
+            angleAdjust.rotateTo(120,vex::rotationUnits::deg,100,vex::velocityUnits::pct, false);
+            angleAdjust.setTimeout(600, vex::timeUnits::msec);
+
+           FrontLeft.spin(vex::directionType::fwd, 40, vex::velocityUnits::pct);
+            BackLeft.spin(vex::directionType::fwd, 40, vex::velocityUnits::pct);
+            BackRight.spin(vex::directionType::rev, 40, vex::velocityUnits::pct);
+            FrontRight.spin(vex::directionType::rev, 40, vex::velocityUnits::pct);
+            currVal = Gyro.value(vex::analogUnits::range12bit);
+
+        while(((Gyro.value(vex::analogUnits::range12bit)) - currVal) < 700){
+           vex::task::sleep(10); 
+        }
+        //stop motors with PID
+        driveHold();
+        driveTimeout(2, 2); 
+        //stop motors and put them on coast
+        vex::task::sleep(250);
+        driveCoast();
+
+
+
+        Puncher.rotateTo(1080, vex::rotationUnits::deg, 100, vex::velocityUnits::pct, true);
+        angleAdjust.rotateTo(0,vex::rotationUnits::deg,100,vex::velocityUnits::pct, false);
+        angleAdjust.setTimeout(600, vex::timeUnits::msec);
+
+        driveCoast();
 
         }
         else if(fiveFlag){
-          prePuncher = true;
+            Puncher.rotateTo(900, vex::rotationUnits::deg, 100, vex::velocityUnits::pct, false);
+            Puncher.setTimeout(600, vex::timeUnits::msec);
+          driveMoveFor(25, 100);
+          driveTimeout(1.5, 1.5);
+          //vex::task::sleep(100);
+          resetDrive();
 
-          //drive forward to flip cap and drive enough for next shot
-          driveMoveFor(52, 70);
-          driveTimeout(2, 2);
+            angleAdjust.rotateTo(120,vex::rotationUnits::deg,100,vex::velocityUnits::pct, false);
+            angleAdjust.setTimeout(600, vex::timeUnits::msec);
 
-          //turn and align for high flag
-          gyroTurn(true, 50, 50, 38);
+           FrontLeft.spin(vex::directionType::fwd, 40, vex::velocityUnits::pct);
+            BackLeft.spin(vex::directionType::fwd, 40, vex::velocityUnits::pct);
+            BackRight.spin(vex::directionType::rev, 40, vex::velocityUnits::pct);
+            FrontRight.spin(vex::directionType::rev, 40, vex::velocityUnits::pct);
+            currVal = Gyro.value(vex::analogUnits::range12bit);
 
-          //trigger puncher to shoot high flag - already in position
-          Puncher.rotateFor(90, vex::rotationUnits::deg, 100, vex::velocityUnits::pct, true);
-          Puncher.stop(vex::brakeType::hold);
-  
-          //run puncher for 120 degrees to reset to start position - blocking off, so does this while turning and driving
-          Puncher.rotateFor(120, vex::rotationUnits::deg, 100, vex::velocityUnits::pct, false);
+        while(((Gyro.value(vex::analogUnits::range12bit)) - currVal) < 700){
+           vex::task::sleep(10); 
+        }
+        //stop motors with PID
+        driveHold();
+        driveTimeout(2, 2); 
+        //stop motors and put them on coast
+        vex::task::sleep(250);
+        driveCoast();
+
+
+
+        Puncher.rotateTo(1080, vex::rotationUnits::deg, 100, vex::velocityUnits::pct, true);
+        angleAdjust.rotateTo(0,vex::rotationUnits::deg,100,vex::velocityUnits::pct, false);
+        angleAdjust.setTimeout(600, vex::timeUnits::msec);
+        vex::task::sleep(150);
+
+        driveTurnFor(30, 25, 100, 75);
+
+        driveCoast();
+
+           // Lift.setTimeout(600, vex::timeUnits::msec);
             
-            resetDrive();
-          //turn more towards low flag
-          driveTurnFor(36, 33, 70, 40);
-  
-            //now that puncher has reset position, brake type coast can be applied
-          Puncher.stop(vex::brakeType::coast);
+            //vex::task::sleep(2000);
+            //driveMoveFor(-100, 100);
+            // Lift.rotateTo(0, vex::rotationUnits::deg, 85, vex::velocityUnits::pct, true);
+
         }
         //none
         else {
-          driveMoveFor(30, 70);
+          driveMoveFor(30, 100);
           driveTimeout(1.5, 1.5);
         }
-        
-        
+
         //end of auton stuff
         Puncher.stop(vex::brakeType::coast);
         Intake.stop(vex::brakeType::coast);
@@ -1007,8 +1251,10 @@ int autoTask(){
     }
 
 void autonomous( void ) {
+    autoRunning = true;
+    //vex::task stop(ratchetTask);
     //run auton helper task
-    vex::task autoHelp(autoTask);
+    //vex::task autoHelp(autoTask);
     
     /*  all false = just 3 flag with cap flip
         if first bool true, 4 flag
@@ -1019,7 +1265,7 @@ void autonomous( void ) {
     
     //3 flag function - red side
     //5 flag
-      threeFlagRed(false, true, false);
+      //threeFlagRed(false, true, false);
     //4 flag
       //threeFlagRed(true, false, false);
     //3 flag
@@ -1030,7 +1276,7 @@ void autonomous( void ) {
 
     //3 flag function - blue side
     //5 flag
-      //threeFlagBlue(false, true, false);
+      threeFlagBlue(false, true, false);
     //4 flag
       //threeFlagBlue(true, false, false);
     //3 flag
@@ -1052,7 +1298,7 @@ void autonomous( void ) {
     //backblueParking();
 
     //stop auto helper task
-    vex::task stop(autoTask); 
+    //vex::task stop(autoTask); 
     //just in case
     vex::task::sleep(15000);
 }
@@ -1182,7 +1428,7 @@ void autonomous( void ) {
     }
 
     void liftMediumDetect(){
-    	if(Controller1.ButtonY.pressing()){
+        if(Controller1.ButtonY.pressing()){
                 //wait until released
                    while(Controller1.ButtonY.pressing()){
                        vex::task::sleep(100);
@@ -1223,86 +1469,8 @@ void liftTaskFunc(){
         
     }
 
-    void ratchetLoad(){
-    	if(!pLoaded){
-    	if(Controller1.ButtonR1.pressing()){
-                //wait until released
-                   while(Controller1.ButtonR1.pressing()){
-                       vex::task::sleep(100);
-                   }
-                //run func
-                pLastVal += 180;
-                Puncher.rotateTo(pLastVal, vex::rotationUnits::deg, 100, vex::velocityUnits::pct, true);
-                //Puncher.stop(vex::brakeType::coast);
-                pLoaded = true;
-                }
-            }
-
-    }
-    void ratchetFire(){
-    	if(pLoaded){
-    	if(Controller1.ButtonR2.pressing()){
-                //wait until released
-                   while(Controller1.ButtonR2.pressing()){
-                       vex::task::sleep(100);
-                   }
-                //run func
-                   pLastVal += 180;
-                Puncher.rotateTo(pLastVal, vex::rotationUnits::deg, 100, vex::velocityUnits::pct, true);
-               	//Puncher.stop(vex::brakeType::coast);
-                pLoaded = false;
-                }
-            }
-
-    }
-
-    void ratchetBoth(){
-    	if(Controller1.ButtonR1.pressing()){
-                //wait until released
-                   while(Controller1.ButtonR1.pressing()){
-                       vex::task::sleep(100);
-                   }
-                //run func
-                   if(pLoaded){
-                   pLastVal += 180;
-                Puncher.rotateTo(pLastVal, vex::rotationUnits::deg, 100, vex::velocityUnits::pct, true);
-               	//Puncher.stop(vex::brakeType::coast);
-                pLoaded = false;
-                }
-            	else if(!pLoaded){
-            		pLastVal += 180;
-                Puncher.rotateTo(pLastVal, vex::rotationUnits::deg, 100, vex::velocityUnits::pct, true);
-               	//Puncher.stop(vex::brakeType::coast);
-                pLoaded = true;
-            	}
-           }
-    }
-
-    void ratchetFull(){
-    	if(Controller1.ButtonR2.pressing()){
-                //wait until released
-                   while(Controller1.ButtonR2.pressing()){
-                       vex::task::sleep(100);
-                   }
-                //run func
-                pLastVal += 360;
-                Puncher.rotateTo(pLastVal, vex::rotationUnits::deg, 100, vex::velocityUnits::pct, true);
-           }
-    }
-
-
-
-void ratchetTaskFunc(){
-	Puncher.stop(vex::brakeType::coast);
-	ratchetBoth();
-	ratchetFull();
-	//ratchetLoad();
-	//ratchetFire();
-}
-
     
-//other task used to run puncher and cap intake triggers
-    int driveTask(){
+int driveTask(){
         while(true){
             driveTaskFunc();
             //to not waste resources
@@ -1319,15 +1487,6 @@ int liftTask(){
         }
         return 0;
     }
-int ratchetTask(){
-	 while(true){
-            ratchetTaskFunc();
-            //to not waste resources
-            vex::task::sleep(20);
-        }
-        return 0;
-}
-
 
     void controllerDisplay(){
             Controller1.Screen.clearScreen();
@@ -1337,12 +1496,12 @@ int ratchetTask(){
                     Controller1.Screen.setCursor(3, 1);
                     //Controller1.Screen.print("               Off");
                     Controller1.Screen.print("Off");
-                	}
-                	else
-                	{
-                		Controller1.Screen.setCursor(3, 1);
+                    }
+                    else
+                    {
+                        Controller1.Screen.setCursor(3, 1);
                     Controller1.Screen.print("On");
-                	}
+                    }
         
                     Controller1.Screen.setCursor(1,1);
                     if(anglePos == 0){
@@ -1362,17 +1521,17 @@ int ratchetTask(){
         Brain.Screen.clearScreen();
         
              // Brain.Screen.printAt(1, 120, "%d", test);
-              //Brain.Screen.printAt(1, 15, "%d", Gyro.value(vex::analogUnits::pct));
+              Brain.Screen.printAt(1, 15, "%d", Gyro.value(vex::analogUnits::pct));
               Brain.Screen.printAt(1, 35, "%d", Gyro.value(vex::analogUnits::range8bit));
-              //Brain.Screen.printAt(1, 55, "%d", Gyro.value(vex::analogUnits::range10bit));
-              //Brain.Screen.printAt(1, 55, "%d", Gyro.value(vex::analogUnits::range12bit));
-              //Brain.Screen.printAt(1, 75, "%d", Gyro.value(vex::analogUnits::mV));
+              Brain.Screen.printAt(1, 55, "%d", Gyro.value(vex::analogUnits::range10bit));
+              Brain.Screen.printAt(1, 75, "%d", Gyro.value(vex::analogUnits::range12bit));
+              Brain.Screen.printAt(1, 95, "%d", Gyro.value(vex::analogUnits::mV));
             
               //Brain.Screen.printAt(1, 115, "%d", Gyro.value(vex::rotationUnits::deg));
             
               //Brain.Screen.printAt(1, 155, "%d", Gyro.value(vex::percentUnits::pct));
-              Brain.Screen.printAt(1, 150, "%d", pLastVal);
-              Brain.Screen.printAt(1, 180, "%d", liftMedium);
+              //Brain.Screen.printAt(1, 150, "%d", pLastVal);
+              //Brain.Screen.printAt(1, 180, "%d", liftMedium);
          
         //Brain.Screen.printAt(1, 40, "5flagRed");
         
@@ -1413,8 +1572,8 @@ int ratchetTask(){
             BackRight.spin(vex::directionType::fwd, Controller1.Axis2.value() * .75, vex::velocityUnits::pct);
         }
         else {
-            int temp = Controller1.Axis3.value();
-            int temp2 = Controller1.Axis3.value();
+           // int temp = Controller1.Axis3.value();
+           // int temp2 = Controller1.Axis3.value();
             FrontLeft.spin(vex::directionType::fwd, Controller1.Axis3.value() * 1.0, vex::velocityUnits::pct);
             BackLeft.spin(vex::directionType::fwd, Controller1.Axis3.value() * 1.0, vex::velocityUnits::pct);
             FrontRight.spin(vex::directionType::fwd, Controller1.Axis2.value() * 1.0, vex::velocityUnits::pct);
@@ -1455,7 +1614,7 @@ int ratchetTask(){
                 }
                 
                 else if(Controller1.ButtonR2.pressing()){
-    				liftOn = false;
+                    liftOn = false;
                     puncherIsMoving = true;
                     Puncher.spin(vex::directionType::fwd, maxSpeed, vex::velocityUnits::pct);
 
@@ -1480,7 +1639,7 @@ int ratchetTask(){
     
     void LiftControl(void){
 
-    	if((!liftMedium) && (!liftReset)){
+        if((!liftMedium) && (!liftReset)){
         if(Controller1.ButtonX.pressing()){
                 Lift.spin(vex::directionType::fwd, maxSpeed * .75, vex::velocityUnits::pct);
                 liftUp = false;
@@ -1494,13 +1653,13 @@ int ratchetTask(){
                     liftOn = false;
             }
         else if((!liftMedium) && (!liftReset)){
-        	if(liftOn){
+            if(liftOn){
                 Lift.stop(vex::brakeType::hold);     
-        	}
-            else if (!liftOn){
-            	Lift.stop(vex::brakeType::coast);
             }
-        	
+            else if (!liftOn){
+                Lift.stop(vex::brakeType::coast);
+            }
+            
         }
     }
     }
@@ -1516,19 +1675,22 @@ int ratchetTask(){
     }
 
 void usercontrol( void ) {
+    autoRunning = false;
   // User control code here, inside the loop
     
   //initiate task for triggers, like cap control and puncher button
-  vex::task stop(autoTask); 
+  //vex::task stop(autoTask); 
   vex::task driveTriggers(driveTask, 1);
   vex::task ratchetTriggers(ratchetTask, 2);
   vex::task liftTriggers(liftTask, 3);
+  int pLastVal = 0;
   
   //initiate task for brain and controller displays
   vex::task display(displayTask, 4);
 
         Puncher.stop(vex::brakeType::coast);
         Intake.stop(vex::brakeType::coast);
+        Puncher.resetRotation();
         driveCoast();
     
   while (true) {
@@ -1539,10 +1701,10 @@ void usercontrol( void ) {
 }
 
 int main() {
+
     
     //Run the pre-autonomous function. 
     pre_auton();
-    
     
     //Set up callbacks for autonomous and driver control periods.
     Competition.autonomous(autonomous);
@@ -1553,4 +1715,4 @@ int main() {
       vex::task::sleep(100);//Sleep the task for a short amount of time to prevent wasted resources.
     }    
        
-}	
+}   
