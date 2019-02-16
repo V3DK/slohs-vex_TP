@@ -540,7 +540,7 @@ int ratchetTask(){
 
 
 
-        Puncher.rotateTo(1100, vex::rotationUnits::deg, 100, vex::velocityUnits::pct, true);
+        Puncher.rotateTo(1080, vex::rotationUnits::deg, 100, vex::velocityUnits::pct, true);
         angleAdjust.rotateTo(0,vex::rotationUnits::deg,100,vex::velocityUnits::pct, false);
         angleAdjust.setTimeout(600, vex::timeUnits::msec);
         driveCoast();
