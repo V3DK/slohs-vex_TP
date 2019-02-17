@@ -4,10 +4,11 @@ vex::motor BackLeft = vex::motor(vex::PORT12, vex::gearSetting::ratio18_1);
 vex::motor FrontRight = vex::motor(vex::PORT20, vex::gearSetting::ratio18_1, true);
 vex::motor BackRight = vex::motor(vex::PORT19, vex::gearSetting::ratio18_1, true);
 
-vex::motor Intake = vex::motor(vex::PORT13, vex::gearSetting::ratio6_1);
+vex::motor Intake = vex::motor(vex::PORT15, vex::gearSetting::ratio6_1);
 vex::motor Puncher = vex::motor(vex::PORT14, vex::gearSetting::ratio36_1, true);
 vex::motor angleAdjust = vex::motor(vex::PORT18, vex::gearSetting::ratio18_1, true);
 
 vex::motor Lift = vex::motor(vex::PORT17, vex::gearSetting::ratio18_1);
 vex::gyro Gyro = vex::gyro(Brain.ThreeWirePort.A);
 vex::controller Controller1 = vex::controller();
+//port 13 broken
