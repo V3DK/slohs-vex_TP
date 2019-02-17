@@ -336,7 +336,8 @@ int ratchetTask(){
         Lift.setTimeout(1000, vex::timeUnits::msec);
 
         //hit field wall and realign with swing turn
-        driveTurnFor(-46, -46.5, 80, 75);
+        //driveTurnFor(-46, -46.5, 80, 75);
+        driveTurnFor(-46, -46.5, 80, 78);
         driveTimeout(2, 2);
 
         //hold lift up
@@ -375,7 +376,7 @@ int ratchetTask(){
         FrontRight.spin(vex::directionType::fwd, 60, vex::velocityUnits::pct);
         currVal = Gyro.value(vex::analogUnits::range12bit);
 
-        while(((Gyro.value(vex::analogUnits::range12bit)) - currVal) > -920){
+        while(((Gyro.value(vex::analogUnits::range12bit)) - currVal) > -890){
            vex::task::sleep(10); 
         }
         //stop motors with PID
@@ -389,7 +390,7 @@ int ratchetTask(){
 
         ////drive forward to align front and back for top flag - puncher has already started
         //drive forward to align front and back for top flag - puncher has already preloaded
-        driveMoveFor(7, 50);
+        driveMoveFor(8, 50);
         driveTimeout(1, 1);
 
         //pull back slipgear just enough to shoot
@@ -662,7 +663,7 @@ int ratchetTask(){
        // driveMoveFor(-44, 100);
         Lift.rotateTo(340, vex::rotationUnits::deg, 85, vex::velocityUnits::pct, false);
         Lift.setTimeout(1000, vex::timeUnits::msec);
-        driveTurnFor(-45, -45.5, 80, 75);
+        driveTurnFor(-45, -45.5, 80, 78);
         Lift.stop(vex::brakeType::hold);
         driveTimeout(3, 3);
 
@@ -718,7 +719,7 @@ int ratchetTask(){
         //drive forward to align front and back for top flag - puncher has already preloaded
         Lift.stop(vex::brakeType::coast);
 
-        driveMoveFor(7, 50);
+        driveMoveFor(8, 50);
         driveTimeout(2, 2);
 
         //pull back slipgear just enough to shoot
@@ -795,7 +796,7 @@ int ratchetTask(){
 
         resetDrive();
         //driveMoveFor(23, 70);
-        driveTurnFor(21, 23, 63, 70);
+        driveTurnFor(23, 21, 70, 65);
 
         
         //driveTurnFor(120, 118, 70, 69);
@@ -1433,7 +1434,7 @@ int ratchetTask(){
         //Puncher.setTimeout(600, vex::timeUnits::msec);
 
         //angle adjust ahead of time for first shot
-        angleAdjust.rotateTo(10, vex::rotationUnits::deg, 100,vex::velocityUnits::pct, false);
+        angleAdjust.rotateTo(60, vex::rotationUnits::deg, 100,vex::velocityUnits::pct, false);
         angleAdjust.setTimeout(600, vex::timeUnits::msec);
 
         //drive forward to align against low platform
@@ -1472,7 +1473,7 @@ int ratchetTask(){
         vex::task::sleep(100);
 
         //angle adjust to medium height
-        angleAdjust.rotateTo(100, vex::rotationUnits::deg,100,vex::velocityUnits::pct, true);
+        angleAdjust.rotateTo(130, vex::rotationUnits::deg,100,vex::velocityUnits::pct, true);
         angleAdjust.setTimeout(600, vex::timeUnits::msec);
         
         vex::task::sleep(100);
@@ -1507,11 +1508,11 @@ int ratchetTask(){
         driveCoast();
 
         //drive back a little before charging up platform
-        driveMoveFor(-7, 50);
+        driveMoveFor(-7, 45);
         vex::task::sleep(300);
 
         //drive up platform
-        driveMoveFor(45, 100);
+        driveMoveFor(41.5, 100);
     }
 
 
@@ -1797,7 +1798,7 @@ int liftTask(){
               //Brain.Screen.printAt(1, 150, "%d", pLastVal);
               //Brain.Screen.printAt(1, 180, "%d", liftMedium);
          
-        //Brain.Screen.printAt(1, 40, "5flagRed");
+              Brain.Screen.printAt(1, 120, "BackBlueFar");
         
         //vision sensor testing
         
