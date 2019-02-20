@@ -42,20 +42,33 @@ if 0 - down (high flag)
 if 1 - middle (medium flag)
 if 2 - up (low flag)
 */
+//angle and puncher bools
+
+bool pLoaded = false;
 int anglePos = 0;
 bool angleTrigger = false;
 
+//drive bools
 bool driveLockOn = false;
 
+//lift bools
 bool liftReset = false;
 bool liftMedium = false;
 bool liftOn = false;
 bool liftUp = false;
 
-bool pLoaded = false;
 
 //current gyro value holding variable [used in auton]
 int currVal = 0;
+
+    //scaling value for second gyro to match values of first
+    float gScale = 1.005;
+
+    //always use 12bit value - it's more precise
+    int avgGyro(){
+        //avg the two drive sides (scale the second gyro)
+        return (((Gyro.value(vex::analogUnits::range12bit)) + (gScale * Gyro2.value(vex::analogUnits::range12bit))) / 2);
+    }
 
 void resetDrive(){
     FrontLeft.resetRotation();
@@ -88,16 +101,17 @@ void pre_auton( void ) {
     resetDrive();
     //calibrate gyro
     Gyro.startCalibration();
+    Gyro2.startCalibration();
         //wait until done calibrating
-    while(Gyro.isCalibrating()){
-        Brain.Screen.printAt(1, 40, "Calibrating Gyro . . .");
+    while(Gyro.isCalibrating() && Gyro2.isCalibrating()){
+        Brain.Screen.printAt(1, 40, "Calibrating Gyros . . .");
         vex::task::sleep(100);
     }
     
     //just to make sure gyro is calibrated
     vex::task::sleep(1000);
     Brain.Screen.clearScreen();
-    Brain.Screen.printAt(1, 40, "Gyro Calibrated!");
+    Brain.Screen.printAt(1, 40, "Gyros Calibrated!");
  
 }
     void driveCoast(){
@@ -273,7 +287,7 @@ int ratchetTask(){
         //driveLock(true);
     }
     
-  //turning without gyro
+  //turning without gyro - swing turns
     //left dist in inches - negative for backwards
     //right dist in inches
     //left speed in pct
@@ -340,7 +354,7 @@ int ratchetTask(){
         driveTurnFor(-35, -35, 80, 80);
         resetDrive();
         Intake.spin(vex::directionType::fwd, (maxSpeed * 0), vex::velocityUnits::pct);
-        driveMoveFor(-10.5, 30);
+        driveMoveFor(-9.5, 45);
         driveTimeout(0.5, 0.5);
 
         //hold lift up
@@ -377,14 +391,20 @@ int ratchetTask(){
         //using gyro turn left to align with flags
 
         //start drive motors
-        currVal = Gyro.value(vex::analogUnits::range12bit);
+        //currVal = Gyro.value(vex::analogUnits::range12bit);
+
+        //take the current avg gyro value with both gyros (:
+        currVal = avgGyro();
         FrontLeft.spin(vex::directionType::rev, 40, vex::velocityUnits::pct);
         BackLeft.spin(vex::directionType::rev, 40, vex::velocityUnits::pct);
         BackRight.spin(vex::directionType::fwd, 40, vex::velocityUnits::pct);
         FrontRight.spin(vex::directionType::fwd, 40, vex::velocityUnits::pct);
 
         //less turning with new strat -old: 890
-        while(((Gyro.value(vex::analogUnits::range12bit)) - currVal) > -825){
+        //while(((Gyro.value(vex::analogUnits::range12bit)) - currVal) > -825){
+          // vex::task::sleep(10); 
+       // }
+        while(((avgGyro() - currVal) > -825)){
            vex::task::sleep(10); 
         }
         //stop motors with PID
@@ -445,9 +465,10 @@ int ratchetTask(){
         BackLeft.spin(vex::directionType::rev, 10, vex::velocityUnits::pct);
         BackRight.spin(vex::directionType::fwd, 10, vex::velocityUnits::pct);
         FrontRight.spin(vex::directionType::fwd, 10, vex::velocityUnits::pct);
-        currVal = Gyro.value(vex::analogUnits::range12bit);
-        //use last currval to turn based on last value
-        while(((Gyro.value(vex::analogUnits::range12bit)) - currVal) > -35){
+        //currVal = Gyro.value(vex::analogUnits::range12bit);
+        currVal = avgGyro();
+        //use last currVal to turn based on last value
+        while((avgGyro() - currVal) > -30){
            vex::task::sleep(10); 
         }
         //stop motors with PID
@@ -523,9 +544,9 @@ int ratchetTask(){
             BackLeft.spin(vex::directionType::rev, 70, vex::velocityUnits::pct);
             BackRight.spin(vex::directionType::fwd, 70, vex::velocityUnits::pct);
             FrontRight.spin(vex::directionType::fwd, 70, vex::velocityUnits::pct);
-            currVal = Gyro.value(vex::analogUnits::range12bit);
-
-        while(((Gyro.value(vex::analogUnits::range12bit)) - currVal) > -615){
+            //currVal = Gyro.value(vex::analogUnits::range12bit);
+              currVal = avgGyro();
+        while((avgGyro() - currVal) > -615){
            vex::task::sleep(10); 
         }
         //stop motors with PID
@@ -561,9 +582,9 @@ int ratchetTask(){
             BackLeft.spin(vex::directionType::rev, 70, vex::velocityUnits::pct);
             BackRight.spin(vex::directionType::fwd, 70, vex::velocityUnits::pct);
             FrontRight.spin(vex::directionType::fwd, 70, vex::velocityUnits::pct);
-            currVal = Gyro.value(vex::analogUnits::range12bit);
+            currVal = avgGyro();
 
-        while(((Gyro.value(vex::analogUnits::range12bit)) - currVal) > -615){
+        while(((avgGyro() - currVal)) > -615){
            vex::task::sleep(10); 
         }
         //stop motors with PID
@@ -601,7 +622,6 @@ int ratchetTask(){
         Puncher.stop(vex::brakeType::coast);
         Intake.stop(vex::brakeType::coast);
         driveLock(false);
-       
     }
 
         /*-------------------------------------------------------------------------------------------*/
@@ -617,7 +637,8 @@ int ratchetTask(){
     //if four flag, run 3 flag with cap flip and middle pole low flag
     //if five flag, run 3 flag with cap flip, high flag shot, and middle pole low flag
     //if park, run 3 flag with cap flip and park
-    void threeFlagBlue(bool fourFlag, bool fiveFlag, bool park){Puncher.resetRotation();
+    void threeFlagBlue(bool fourFlag, bool fiveFlag, bool park){
+        Puncher.resetRotation();
         //reset driveTrain encoders
         resetDrive();
         resetOthers();
@@ -642,7 +663,7 @@ int ratchetTask(){
         driveTurnFor(-35, -35, 80, 80);
         resetDrive();
         Intake.spin(vex::directionType::fwd, (maxSpeed * 0), vex::velocityUnits::pct);
-        driveMoveFor(-10.5, 30);
+        driveMoveFor(-9.5, 45);
         driveTimeout(0.5, 0.5);
 
         //hold lift up
@@ -679,14 +700,15 @@ int ratchetTask(){
         //using gyro turn left to align with flags
 
         //start drive motors
-        currVal = Gyro.value(vex::analogUnits::range12bit);
+        //currVal = Gyro.value(vex::analogUnits::range12bit);
+        currVal = avgGyro();
         FrontLeft.spin(vex::directionType::fwd, 40, vex::velocityUnits::pct);
         BackLeft.spin(vex::directionType::fwd, 40, vex::velocityUnits::pct);
         BackRight.spin(vex::directionType::rev, 40, vex::velocityUnits::pct);
         FrontRight.spin(vex::directionType::rev, 40, vex::velocityUnits::pct);
 
         //less turning with new strat -old: 890
-        while(((Gyro.value(vex::analogUnits::range12bit)) - currVal) < 845){
+        while(((avgGyro()) - currVal) < 845){
            vex::task::sleep(10); 
         }
         //stop motors with PID
@@ -747,9 +769,10 @@ int ratchetTask(){
         BackLeft.spin(vex::directionType::fwd, 10, vex::velocityUnits::pct);
         BackRight.spin(vex::directionType::rev, 10, vex::velocityUnits::pct);
         FrontRight.spin(vex::directionType::rev, 10, vex::velocityUnits::pct);
-        currVal = Gyro.value(vex::analogUnits::range12bit);
-        //use last currval to turn based on last value
-        while(((Gyro.value(vex::analogUnits::range12bit)) - currVal) < 35){
+        //currVal = Gyro.value(vex::analogUnits::range12bit);
+        currVal = avgGyro();
+        //use last currVal to turn based on last value
+        while(((avgGyro()) - currVal) < 30){
            vex::task::sleep(10); 
         }
         //stop motors with PID
@@ -825,9 +848,10 @@ int ratchetTask(){
             BackLeft.spin(vex::directionType::fwd, 70, vex::velocityUnits::pct);
             BackRight.spin(vex::directionType::rev, 70, vex::velocityUnits::pct);
             FrontRight.spin(vex::directionType::rev, 70, vex::velocityUnits::pct);
-            currVal = Gyro.value(vex::analogUnits::range12bit);
+            //currVal = Gyro.value(vex::analogUnits::range12bit);
+            currVal = avgGyro();
 
-        while(((Gyro.value(vex::analogUnits::range12bit)) - currVal) < 630){
+        while(((avgGyro()) - currVal) < 630){
            vex::task::sleep(10); 
         }
         //stop motors with PID
@@ -863,9 +887,9 @@ int ratchetTask(){
             BackLeft.spin(vex::directionType::fwd, 70, vex::velocityUnits::pct);
             BackRight.spin(vex::directionType::rev, 70, vex::velocityUnits::pct);
             FrontRight.spin(vex::directionType::rev, 70, vex::velocityUnits::pct);
-            currVal = Gyro.value(vex::analogUnits::range12bit);
-
-        while(((Gyro.value(vex::analogUnits::range12bit)) - currVal) < 630){
+            //currVal = Gyro.value(vex::analogUnits::range12bit);
+            currVal = avgGyro();
+        while(((avgGyro()) - currVal) < 630){
            vex::task::sleep(10); 
         }
         //stop motors with PID
@@ -1492,10 +1516,58 @@ int ratchetTask(){
     
 
 void autonomous( void ) {
+
+    //red autos
     autoRunning = true;
-    //vex::task stop(ratchetTask);
-    //run auton helper task
-    //vex::task autoHelp(autoTask);
+    //how many "units"
+    float tempVal = ((autoSelect.rotation(vex::rotationUnits::deg)) / 90);
+
+    //use autoSelect to choose which auto to run
+    if(tempVal < .25){
+        //default - 5 flag
+        threeFlagRed(false, true, false);
+
+    }
+    else if(tempVal < 1.15){
+        //four flag
+        threeFlagRed(true, false, false);
+
+    }
+    else if(tempVal < 1.15 * 2){
+        //middle cross
+        backRedMiddle();
+        
+        
+    }
+    else if(tempVal < 1.15 * 3){
+        //descore far
+        backRedFar();
+    }
+
+    /* B L U E  S I D E
+
+    if(tempVal < .25){
+        //default - 5 flag
+        threeFlagBlue(false, true, false);
+
+    }
+    else if(tempVal < 1.15){
+        //four flag
+        threeFlagBlue(true, false, false);
+
+    }
+    else if(tempVal < 1.15 * 2){
+        //middle cross
+        backBlueMiddle();
+        
+        
+    }
+    else if(tempVal < 1.15 * 3){
+        //descore far
+        backBlueFar();
+    }
+
+    */
     
     /*  all false = just 3 flag with cap flip
         if first bool true, 4 flag
@@ -1514,7 +1586,7 @@ void autonomous( void ) {
 
     //3 flag function - blue side
     //5 flag
-      threeFlagBlue(false, true, false);
+      //threeFlagBlue(false, true, false);
     //4 flag
       //threeFlagBlue(true, false, false);
     //3 flag
@@ -1535,9 +1607,6 @@ void autonomous( void ) {
     //backBlueMiddle();
     //backBlueFar();
 
-    //stop auto helper task
-    //vex::task stop(autoTask); 
-    //just in case
     vex::task::sleep(15000);
 }
 
@@ -1759,11 +1828,20 @@ int liftTask(){
         Brain.Screen.clearScreen();
         
              // Brain.Screen.printAt(1, 120, "%d", test);
-              Brain.Screen.printAt(1, 15, "%d", Gyro.value(vex::analogUnits::pct));
-              Brain.Screen.printAt(1, 35, "%d", Gyro.value(vex::analogUnits::range8bit));
-              Brain.Screen.printAt(1, 55, "%d", Gyro.value(vex::analogUnits::range10bit));
-              Brain.Screen.printAt(1, 75, "%d", Gyro.value(vex::analogUnits::range12bit));
-              Brain.Screen.printAt(1, 95, "%d", Gyro.value(vex::analogUnits::mV));
+              //Brain.Screen.printAt(1, 15, "%d", Gyro.value(vex::analogUnits::pct));
+              Brain.Screen.printAt(1, 15, "%d", Gyro.value(vex::analogUnits::range8bit));
+             // Brain.Screen.printAt(1, 55, "%d", Gyro.value(vex::analogUnits::range10bit));
+              Brain.Screen.printAt(1, 35, "%d", Gyro.value(vex::analogUnits::range12bit));
+              Brain.Screen.printAt(1, 55, "%.6f", (1.005 * Gyro2.value(vex::analogUnits::range8bit)));
+              Brain.Screen.printAt(1, 75, "%.6f", (1.005 * Gyro2.value(vex::analogUnits::range12bit)));
+              //Brain.Screen.printAt(1, 115, "%.6f", FrontLeft.rotation(vex::rotationUnits::deg));
+              //Brain.Screen.printAt(1, 135, "%.6f", BackLeft.rotation(vex::rotationUnits::deg));
+              //Brain.Screen.printAt(1, 155, "%.6f", FrontRight.rotation(vex::rotationUnits::deg));
+              //Brain.Screen.printAt(1, 175, "%.6f", BackRight.rotation(vex::rotationUnits::deg));
+              Brain.Screen.printAt(1, 115, "%.3f", autoSelect.rotation(vex::rotationUnits::deg));
+              Brain.Screen.printAt(1, 135, "%.3f", (autoSelect.rotation(vex::rotationUnits::deg) / 90));
+
+             // Brain.Screen.printAt(1, 95, "%d", Gyro.value(vex::analogUnits::mV));
             
               //Brain.Screen.printAt(1, 115, "%d", Gyro.value(vex::rotationUnits::deg));
             
@@ -1771,11 +1849,7 @@ int liftTask(){
               //Brain.Screen.printAt(1, 150, "%d", pLastVal);
               //Brain.Screen.printAt(1, 180, "%d", liftMedium);
          
-              Brain.Screen.printAt(1, 120, "5FlagRed");
-        
-        //vision sensor testing
-        
-          
+              Brain.Screen.printAt(1, 195, "5FlagRed");          
     }
 
 
