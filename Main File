@@ -112,7 +112,7 @@ void pre_auton( void ) {
     vex::task::sleep(1000);
     Brain.Screen.clearScreen();
     Brain.Screen.printAt(1, 40, "Gyros Calibrated!");
- 
+    autoSelect.resetRotation();
 }
     void driveCoast(){
       FrontLeft.stop(vex::brakeType::coast);
@@ -1525,22 +1525,26 @@ void autonomous( void ) {
     //use autoSelect to choose which auto to run
     if(tempVal < .25){
         //default - 5 flag
+        Brain.Screen.printAt(1, 15, "5FlagRed");          
         threeFlagRed(false, true, false);
 
     }
     else if(tempVal < 1.15){
         //four flag
+        Brain.Screen.printAt(1, 15, "4FlagRed");  
         threeFlagRed(true, false, false);
 
     }
     else if(tempVal < 1.15 * 2){
         //middle cross
+        Brain.Screen.printAt(1, 15, "RedBackMiddle");  
         backRedMiddle();
         
         
     }
     else if(tempVal < 1.15 * 3){
         //descore far
+        Brain.Screen.printAt(1, 15, "RedBackFar");  
         backRedFar();
     }
 
@@ -1548,22 +1552,26 @@ void autonomous( void ) {
 
     if(tempVal < .25){
         //default - 5 flag
+        Brain.Screen.printAt(1, 15, "5FlagBlue");
         threeFlagBlue(false, true, false);
 
     }
     else if(tempVal < 1.15){
         //four flag
+        Brain.Screen.printAt(1, 15, "4FlagBlue");
         threeFlagBlue(true, false, false);
 
     }
     else if(tempVal < 1.15 * 2){
         //middle cross
+        Brain.Screen.printAt(1, 15, "BlueBackMiddle");
         backBlueMiddle();
         
         
     }
     else if(tempVal < 1.15 * 3){
         //descore far
+        Brain.Screen.printAt(1, 15, "BlueBackFar");
         backBlueFar();
     }
 
