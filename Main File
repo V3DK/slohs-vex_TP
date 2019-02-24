@@ -1,4 +1,4 @@
- #include "robot-config.h"
+#include "robot-config.h"
 
 //Creates a competition object that allows access to Competition methods.
 vex::competition    Competition;
@@ -62,10 +62,11 @@ bool liftUp = false;
 int currVal = 0;
 
     //scaling value for second gyro to match values of first
-    float gScale = 1.005;
+    //negative cause second gyro upside dow
+    float gScale = -1.005;
 
     //always use 12bit value - it's more precise
-    int avgGyro(){
+    float avgGyro(){
         //avg the two drive sides (scale the second gyro)
         return (((Gyro.value(vex::analogUnits::range12bit)) + (gScale * Gyro2.value(vex::analogUnits::range12bit))) / 2);
     }
@@ -1840,14 +1841,16 @@ int liftTask(){
               Brain.Screen.printAt(1, 15, "%d", Gyro.value(vex::analogUnits::range8bit));
              // Brain.Screen.printAt(1, 55, "%d", Gyro.value(vex::analogUnits::range10bit));
               Brain.Screen.printAt(1, 35, "%d", Gyro.value(vex::analogUnits::range12bit));
-              Brain.Screen.printAt(1, 55, "%.6f", (1.005 * Gyro2.value(vex::analogUnits::range8bit)));
-              Brain.Screen.printAt(1, 75, "%.6f", (1.005 * Gyro2.value(vex::analogUnits::range12bit)));
+              Brain.Screen.printAt(1, 55, "%.6f", (gScale * Gyro2.value(vex::analogUnits::range8bit)));
+              Brain.Screen.printAt(1, 75, "%.6f", (gScale * Gyro2.value(vex::analogUnits::range12bit)));
+              Brain.Screen.printAt(1, 135, "%.6f", (avgGyro()));  
+              Brain.Screen.printAt(1, 155, "%.6f", (   (Gyro.value(vex::analogUnits::range12bit) + (gScale * Gyro2.value(vex::analogUnits::range12bit)))  * 0.5  ));
               //Brain.Screen.printAt(1, 115, "%.6f", FrontLeft.rotation(vex::rotationUnits::deg));
               //Brain.Screen.printAt(1, 135, "%.6f", BackLeft.rotation(vex::rotationUnits::deg));
               //Brain.Screen.printAt(1, 155, "%.6f", FrontRight.rotation(vex::rotationUnits::deg));
               //Brain.Screen.printAt(1, 175, "%.6f", BackRight.rotation(vex::rotationUnits::deg));
-              Brain.Screen.printAt(1, 115, "%.3f", autoSelect.rotation(vex::rotationUnits::deg));
-              Brain.Screen.printAt(1, 135, "%.3f", (autoSelect.rotation(vex::rotationUnits::deg) / 90));
+            //  Brain.Screen.printAt(1, 155, "%.3f", autoSelect.rotation(vex::rotationUnits::deg));
+            //  Brain.Screen.printAt(1, 175, "%.3f", (autoSelect.rotation(vex::rotationUnits::deg) / 90));
 
              // Brain.Screen.printAt(1, 95, "%d", Gyro.value(vex::analogUnits::mV));
             
