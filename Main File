@@ -2037,11 +2037,7 @@ void autonomous( void ) {
     if(tempVal < .25){
         //default - 5 flag
         Brain.Screen.printAt(1, 175, "5FlagRed");          
-        //threeFlagRed(false, true, false);
-        //testing
-        //skillsAuto();
-        testingAuto();
-
+        threeFlagRed(false, true, false);
     }
     else if(tempVal < 1.15){
         //four flag
@@ -2060,6 +2056,11 @@ void autonomous( void ) {
         //descore far
         Brain.Screen.printAt(1, 15, "RedBackFar");  
         backRedFar();
+    }
+    else if(tempVal < 1.15 * 4){
+        //descore far
+        Brain.Screen.printAt(1, 15, "Skills Auto");  
+        testingAuto();
     }
 
     /* B L U E  S I D E
