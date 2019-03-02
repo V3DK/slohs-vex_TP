@@ -559,7 +559,7 @@ int ratchetTask(){
 
 
         //angle-adjust for high flag
-        angleAdjust.rotateTo(65, vex::rotationUnits::deg,100,vex::velocityUnits::pct, false);
+        angleAdjust.rotateTo(75, vex::rotationUnits::deg,100,vex::velocityUnits::pct, false);
         angleAdjust.setTimeout(600, vex::timeUnits::msec);
 
         //drive forward for flag alignment before turning
@@ -611,7 +611,7 @@ int ratchetTask(){
         Intake.rotateFor(5, vex::rotationUnits::rev, (maxSpeed * .80), vex::velocityUnits::pct, false);
         vex::task::sleep(100);
         //change angle
-        angleAdjust.rotateTo(135, vex::rotationUnits::deg,100,vex::velocityUnits::pct, false);
+        angleAdjust.rotateTo(170, vex::rotationUnits::deg,100,vex::velocityUnits::pct, false);
         angleAdjust.setTimeout(600, vex::timeUnits::msec);
         //give ball a little bit of time
         vex::task::sleep(100);
@@ -679,7 +679,7 @@ int ratchetTask(){
         //driveTurnFor(-46, -46.5, 80, 75);
        // driveTurnFor(-35, -35, 80, 80);
 
-        driveMoveFor(-38, 60);
+        driveMoveFor(-36.5, 60);
         driveCoast();
         vex::task::sleep(150);
 
@@ -716,7 +716,7 @@ int ratchetTask(){
 
         //angle-adjust for middle flag
         
-        driveMoveFor(-21.5, 40); 
+        driveMoveFor(-20, 40); 
 
         driveCoast();    
         vex::task::sleep(150);
@@ -752,7 +752,7 @@ int ratchetTask(){
         angleAdjust.rotateTo(0, vex::rotationUnits::deg,100,vex::velocityUnits::pct, false);
         angleAdjust.setTimeout(600, vex::timeUnits::msec);
         //swing turn for low flag
-        driveTurnFor(47, 53, 75, 80);
+        driveTurnFor(48.5, 54.5, 77, 80);
         vex::task::sleep(150);
         driveCoast();
         vex::task::sleep(300);
@@ -860,7 +860,7 @@ int ratchetTask(){
 
         //hit field wall and realign with swing turn
         //driveTurnFor(-46, -46.5, 80, 75);
-        driveTurnFor(-35, -35, 80, 80);
+        driveTurnFor(-36.2, -36.2, 80, 80);
         resetDrive();
         Intake.spin(vex::directionType::fwd, (maxSpeed * 0), vex::velocityUnits::pct);
         driveMoveFor(-9.5, 45);
@@ -994,9 +994,9 @@ int ratchetTask(){
         Lift.setTimeout(1000, vex::timeUnits::msec);
         Lift.stop(vex::brakeType::coast);
         //rush low flag
-        driveMoveFor(46, 90);
+        //driveMoveFor(46, 90);
         //driveMoveFor(23, 70);
-        //driveTurnFor(21, 23, 63, 70);
+        driveTurnFor(46, 46, 90, 86);
 
         
         //driveTurnFor(120, 118, 70, 69);
@@ -1028,7 +1028,7 @@ int ratchetTask(){
         gyroTurn(true, 50, 50, 68);
 
         //start intake running backwards to flip cap
-        Intake.spin(vex::directionType::rev, (maxSpeed * 0.8), vex::velocityUnits::pct);
+        Intake.spin(vex::directionType::rev, (maxSpeed * 0.5), vex::velocityUnits::pct);
         //void threeFlagRed(bool fourFlag, bool fiveFlag, bool park){
 
         if(park){
@@ -1169,7 +1169,7 @@ int ratchetTask(){
 
         //hit field wall and realign with swing turn
         //driveTurnFor(-46, -46.5, 80, 75);
-        driveTurnFor(-35, -35, 80, 80);
+        driveTurnFor(-36.2, -36.2, 80, 80);
         resetDrive();
         Intake.spin(vex::directionType::fwd, (maxSpeed * 0), vex::velocityUnits::pct);
         driveMoveFor(-9.5, 45);
@@ -1261,7 +1261,7 @@ int ratchetTask(){
         angleAdjust.rotateTo(0,vex::rotationUnits::deg,100,vex::velocityUnits::pct, false);
         angleAdjust.setTimeout(600, vex::timeUnits::msec);
         //vex::task::sleep(100);
-        Intake.spin(vex::directionType::fwd, (maxSpeed), vex::velocityUnits::pct);
+        Intake.spin(vex::directionType::fwd, (maxSpeed * 0.7), vex::velocityUnits::pct);
 
 
         //run intake to get next ball
@@ -1329,10 +1329,10 @@ int ratchetTask(){
         
         //Puncher.rotateFor(150, vex::rotationUnits::deg, 100, vex::velocityUnits::pct, false);
         //turn to face towards low cap
-        gyroTurn(false, 50, 50, 60);
+        gyroTurn(false, 50, 50, 63);
 
         //start intake running backwards to flip cap
-        Intake.spin(vex::directionType::rev, (maxSpeed * 0.8), vex::velocityUnits::pct);
+        Intake.spin(vex::directionType::rev, (maxSpeed * 0.35), vex::velocityUnits::pct);
         //void threeFlagRed(bool fourFlag, bool fiveFlag, bool park){
 
         if(park){
@@ -1398,7 +1398,7 @@ int ratchetTask(){
             FrontRight.spin(vex::directionType::rev, 70, vex::velocityUnits::pct);
             //currVal = Gyro.value(vex::analogUnits::range12bit);
             currVal = avgGyro();
-        while(((avgGyro()) - currVal) < 630){
+        while(((avgGyro()) - currVal) < 600){
            vex::task::sleep(10); 
         }
         //stop motors with PID
@@ -1554,7 +1554,7 @@ int ratchetTask(){
         Puncher.setTimeout(600, vex::timeUnits::msec);
 
         //angle adjust ahead of time for first shot
-        angleAdjust.rotateTo(52, vex::rotationUnits::deg, 100,vex::velocityUnits::pct, false);
+        angleAdjust.rotateTo(60, vex::rotationUnits::deg, 100,vex::velocityUnits::pct, false);
         angleAdjust.setTimeout(600, vex::timeUnits::msec);
 
         //drive forward to align against low platform
@@ -1678,7 +1678,7 @@ int ratchetTask(){
         Puncher.setTimeout(600, vex::timeUnits::msec);
 
         //angle adjust ahead of time for first shot
-        angleAdjust.rotateTo(52, vex::rotationUnits::deg, 100,vex::velocityUnits::pct, false);
+        angleAdjust.rotateTo(60, vex::rotationUnits::deg, 100,vex::velocityUnits::pct, false);
         angleAdjust.setTimeout(600, vex::timeUnits::msec);
 
         //drive forward to align against low platform
@@ -2033,38 +2033,39 @@ void autonomous( void ) {
     //how many "units"
     float tempVal = ((autoSelect.rotation(vex::rotationUnits::deg)) / 90);
 
+
     //use autoSelect to choose which auto to run
     if(tempVal < .25){
         //default - 5 flag
         Brain.Screen.printAt(1, 175, "5FlagRed");          
         threeFlagRed(false, true, false);
     }
-    else if(tempVal < 1.15){
+    else if(tempVal < 1.25){
         //four flag
         Brain.Screen.printAt(1, 15, "4FlagRed");  
         threeFlagRed(true, false, false);
 
     }
-    else if(tempVal < 1.15 * 2){
+    else if(tempVal < 1.25 * 2){
         //middle cross
         Brain.Screen.printAt(1, 15, "RedBackMiddle");  
         backRedMiddle();
         
         
     }
-    else if(tempVal < 1.15 * 3){
+    else if(tempVal < 1.25 * 3){
         //descore far
         Brain.Screen.printAt(1, 15, "RedBackFar");  
         backRedFar();
     }
-    else if(tempVal < 1.15 * 4){
+    else if(tempVal < 1.25 * 4){
         //descore far
         Brain.Screen.printAt(1, 15, "Skills Auto");  
         testingAuto();
     }
 
-    /* B L U E  S I D E
-
+    // B L U E  S I D E
+/*
     if(tempVal < .25){
         //default - 5 flag
         Brain.Screen.printAt(1, 15, "5FlagBlue");
