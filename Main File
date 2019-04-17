@@ -33,7 +33,7 @@ bool scrapperEnabled = false;
 
 //pid is running or not
 bool pidRunning = false;
-bool turnRunning = false;
+bool turnRunning;
 
 float pidReqValue = 0; 
 float tReq = 0;
@@ -45,7 +45,7 @@ int tSpeed = 0;
 //constants for control
 float  kp = 0.3;
 //float  ki = 0.0;
-float  kd = 0.5;
+float  kd = 0.3;
 
 float tKp = 0.9;
 float tKd = 3.5;
@@ -89,7 +89,7 @@ void resetDrive(){
 
 /**************************************************/
 //slew rate
-int accel_step = 9;
+int accel_step = 10;
 int deccel_step = 256; // no decel slew
 int lSpeed = 0;
 int rSpeed = 0;
@@ -137,15 +137,22 @@ void rightSlew(int rightTarget){
 //works for normal and turns
  void stopPid(){
     pidRunning = false;
-    turnRunning = false;
+   // turnRunning = false;
     moveLeft(0);
     moveRight(0);
     //redundant safeties
     pidReqValue = 0;
     pidSpeed = 0;
+    //tReq = 0;
+    //tSpeed = 0;
+ }
+
+ void stopTurn(){
+    turnRunning = false;
+    moveLeft(0);
+    moveRight(0);
     tReq = 0;
     tSpeed = 0;
-
  }
 
  void startPid(float pReq, int pSpeed){ //pReq in inches
@@ -182,20 +189,11 @@ int pidTask(){
     float  pidDerivative;
     int    pidDrive;
 
-    //turning
-    float  tCurr;
-    int    tError;
-    float  tLastError;
-    float  tDeriv;
-    int    tDrive;
-
 
     //clearEncoders
     resetDrive();
 
     pidLastError = 0;
-    tLastError = 0;
-
      while(true){
 
         if(pidRunning){
@@ -225,14 +223,45 @@ int pidTask(){
             rightSlew(pidDrive);
             leftSlew(pidDrive);
         }
-        //turning pid
-        else if(turnRunning){
-            Brain.Screen.clearScreen();
+        
 
+        //pid not running
+        else {
+            // clear all
+            pidError       = 0;
+            pidLastError   = 0;
+            pidDerivative  = 0;
+            pidReqValue    = 0;
+            pidSpeed       = 0;
+        }
+
+            //to not waste resources
+            vex::task::sleep(25);
+        }
+        return 0;
+}
+
+int turnTask(){
+    //turning
+    float  tCurr;
+    int    tError;
+    float  tLastError;
+    float  tDeriv;
+    int    tDrive;
+
+
+    //clearEncoders
+    resetDrive();
+    tLastError = 0;
+
+     while(true){
+        //turning pid
+        if(turnRunning){
+            Brain.Screen.clearScreen();
 
             //guarentees correct sign - right turn is pos, left is neg
             tCurr = (leftAvg() - rightAvg()) / 2;
-
+            tCurr = leftAvg();
             tError = tReq - tCurr;
 
             pidDerivative = tError - tLastError;
@@ -247,7 +276,7 @@ int pidTask(){
 
             //stoppping state - if drive power super small, (less than 3) and error is equal to last error, robot is stopped
             if((abs(tDrive) < 1) && ((tLastError == tError) || (tError < 3))){
-                stopPid();
+                stopTurn();
             }    
             //send to drive motors
             //moveLeft(tDrive);
@@ -258,13 +287,6 @@ int pidTask(){
 
         //pid not running
         else {
-            // clear all
-            pidError       = 0;
-            pidLastError   = 0;
-            pidDerivative  = 0;
-            pidReqValue    = 0;
-            pidSpeed       = 0;
-
             tError = 0;
             tLastError = 0;
             tDeriv = 0;
@@ -1609,9 +1631,9 @@ void autonomous( void ) {
 
     //start pid task for auto
     vex::task pidTasks(pidTask);
+    vex::task turnTasks(turnTask);
 
     //red autos
-   
     autoRunning = true;
     //backRedDouble();
     //threeFlagRed();
@@ -1622,7 +1644,7 @@ void autonomous( void ) {
     //how many "units"
     float tempVal = ((autoSelect.rotation(vex::rotationUnits::deg)) / 90);
 
-    redSide = false;
+    redSide = true;
 
     if(redSide){
         //use autoSelect to choose which auto to run
@@ -1725,6 +1747,7 @@ void autonomous( void ) {
 
 
     vex::task::stop(pidTask); 
+    vex::task::stop(turnTask); 
     //wait 10 seconds
     vex::task::sleep(10000);
 
@@ -2107,6 +2130,7 @@ void usercontrol( void ) {
         resetDrive();
 
 vex::task::stop(pidTask); 
+vex::task::stop(turnTask);
   while (true) {
     allRemoteFunc();  
     vex::task::sleep(20); //Sleep the task for a short amount of time to prevent wasted resources. 
