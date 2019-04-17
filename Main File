@@ -43,12 +43,17 @@ bool pLoaded = false;
 int anglePos = 0;
 bool angleTrigger = false;
 
+bool doubleShot = false;
+
 //drive bools
 bool driveLockOn = false;
 
 //scrapper bools
 bool scrapperUp = false;
 bool scrapperPos = false;
+
+bool scrapperRam = false;
+
 bool scrapperEnabled = false;
 //false = in
 //true = out
@@ -496,6 +501,63 @@ void pre_auton( void ) {
            }
     }
 
+    void doubleShotRun(){
+        if(Controller1.ButtonDown.pressing()){
+                //wait until released
+                   while(Controller1.ButtonDown.pressing()){
+                       vex::task::sleep(100);
+                   }//pLastVal += 360;
+
+
+                //run sequence
+
+                   doubleShot = true;
+                   //reset angle-adjuster
+                angleAdjust.rotateTo(0, vex::rotationUnits::deg,100,vex::velocityUnits::pct, true);
+                angleAdjust.setTimeout(600, vex::timeUnits::msec);
+                
+                   //if loaded back
+                   if((pLastVal % 360) == 180){
+                    //push pLasVal to full rotation - off by 180 in this case
+                    pLastVal += 180;
+
+                    Puncher.rotateTo(pLastVal, vex::rotationUnits::deg, 100, vex::velocityUnits::pct, true);
+                    Puncher.setTimeout(1000, vex::timeUnits::msec);
+                   }
+                   else if((pLastVal % 360) == 0){
+                    pLastVal += 360;
+                    Puncher.rotateTo(pLastVal, vex::rotationUnits::deg, 100, vex::velocityUnits::pct, true);
+                    Puncher.setTimeout(1000, vex::timeUnits::msec);
+                   }
+
+                   //first shot done, and puncher at non loaded position
+                    
+
+                    //load ball up
+                   // Intake.rotateFor(1, vex::rotationUnits::rev, (maxSpeed), vex::velocityUnits::pct, true);
+                   // Intake.setTimeout(1000, vex::timeUnits::msec);
+
+                    //load ball more, but don't wait for it
+                    Intake.rotateFor(6, vex::rotationUnits::rev, (maxSpeed), vex::velocityUnits::pct, false);
+                    Intake.setTimeout(1000, vex::timeUnits::msec);
+
+                    //change angle
+                    angleAdjust.rotateTo(140, vex::rotationUnits::deg,100,vex::velocityUnits::pct, true);
+                    angleAdjust.setTimeout(600, vex::timeUnits::msec);
+
+                  //  vex::task::sleep(100);
+
+                    pLastVal += 360;
+                    Puncher.rotateTo(pLastVal, vex::rotationUnits::deg, 100, vex::velocityUnits::pct, true);
+                    Puncher.setTimeout(1000, vex::timeUnits::msec);
+
+                    angleAdjust.rotateTo(0, vex::rotationUnits::deg,100,vex::velocityUnits::pct, true);
+                    angleAdjust.setTimeout(600, vex::timeUnits::msec);
+
+                    doubleShot = false;
+           }
+    }
+
 
 
 void ratchetTaskFunc(){
@@ -505,6 +567,8 @@ void ratchetTaskFunc(){
 
     ratchetBoth();
     ratchetFull();
+
+    doubleShotRun();
     //ratchetLoad();
     //ratchetFire();
 }
@@ -643,12 +707,14 @@ int ratchetTask(){
         //preLoad puncher with ratchet
         Puncher.rotateTo(180, vex::rotationUnits::deg, 100, vex::velocityUnits::pct, false);
         Puncher.setTimeout(600, vex::timeUnits::msec);
+
+
         //run drive forward for 34 inches
         //driveMoveFor(36, 60);
         startPid(32, 60, 32, 60);
 
         //wait to intake ball
-        vex::task::sleep(100); 
+        vex::task::sleep(150); 
 
         //slow intake down so ball doesn't get yeet
         Intake.spin(vex::directionType::fwd, (maxSpeed * 0.0), vex::velocityUnits::pct);
@@ -663,7 +729,11 @@ int ratchetTask(){
         //driveTurnFor(-36.2, -36.2, 80, 80);
 
         //drive back
-        startPid(-36, 75, -36, 75);
+
+        
+
+        startPid(-33.5, 75, -33.5, 75);
+
 
         resetDrive();
         //Intake.spin(vex::directionType::fwd, (maxSpeed * 0.3), vex::velocityUnits::pct);
@@ -707,14 +777,14 @@ int ratchetTask(){
         //while(((Gyro.value(vex::analogUnits::range12bit)) - currVal) > -825){
           // vex::task::sleep(10); 
        // }
-        while(((avgGyro() - currVal) > -815)){
+        while(((avgGyro() - currVal) > -840)){
            vex::task::sleep(10); 
         }
         //stop motors with PID
         driveHold();
         driveTimeout(2, 2); 
         //stop motors and put them on coast
-        vex::task::sleep(250);
+        vex::task::sleep(150);
         driveCoast();
 
         ////drive forward to align front and back for top flag - puncher has already started
@@ -732,61 +802,35 @@ int ratchetTask(){
 
 
         //get next ball up
-        Intake.rotateFor(3, vex::rotationUnits::rev, (maxSpeed * .7), vex::velocityUnits::pct, false);
+        Intake.rotateFor(3, vex::rotationUnits::rev, (maxSpeed * .6), vex::velocityUnits::pct, false);
         vex::task::sleep(100);
         //change angle
-        angleAdjust.rotateTo(145, vex::rotationUnits::deg,100,vex::velocityUnits::pct, true);
+        angleAdjust.rotateTo(145, vex::rotationUnits::deg,100,vex::velocityUnits::pct, false);
         angleAdjust.setTimeout(600, vex::timeUnits::msec);
         //give ball a little bit of time
 
         //shoot second ball
-        vex::task::sleep(150);
+        vex::task::sleep(300);
         Puncher.rotateTo(720, vex::rotationUnits::deg, 100, vex::velocityUnits::pct, true);
         Puncher.setTimeout(1000, vex::timeUnits::msec);
         Puncher.stop(vex::brakeType::coast);
-        vex::task::sleep(100);
+        vex::task::sleep(300);
         angleAdjust.rotateTo(0, vex::rotationUnits::deg,100,vex::velocityUnits::pct, false);
         angleAdjust.setTimeout(600, vex::timeUnits::msec);
 
-       /* currVal = avgGyro();
-        FrontLeft.spin(vex::directionType::rev, 30, vex::velocityUnits::pct);
-        BackLeft.spin(vex::directionType::rev, 30, vex::velocityUnits::pct);
-        BackRight.spin(vex::directionType::fwd, 30, vex::velocityUnits::pct);
-        FrontRight.spin(vex::directionType::fwd, 30, vex::velocityUnits::pct);
-
-        //less turning with new strat -old: 890
-        //while(((Gyro.value(vex::analogUnits::range12bit)) - currVal) > -825){
-          // vex::task::sleep(10); 
-       // }
-        while(((avgGyro() - currVal) > -20)){
-           vex::task::sleep(10); 
-        }
-        //stop motors with PID
-        driveHold();
-        driveTimeout(2, 2); 
-        //stop motors and put them on coast
-        vex::task::sleep(250);
-        driveCoast();
-*/
-        vex::task::sleep(100);
-        startPid(-0.6, 30, 0.6, 30);
-
         Intake.spin(vex::directionType::fwd, (-1 * maxSpeed), vex::velocityUnits::pct);
 
-       // startPid(35, 89.3, 37.23, 95);
-       // driveTurnFor(35, 89.3, 37.23, 95)
-        //startPid(30, 89.3, 31.91, 95);
-        startPid(34, 95, 34, 95);
-        //driveTurnFor(30, 31.91, 89.3, 95);
-        vex::task::sleep(100);
+       // startPid(31.6, 95, 30, 90);
+        startPid(31, 90, 32.7, 95);
+        //vex::task::sleep(200);
 
         //put scrapper out for low flag
-        Scrapper.rotateTo(-300, vex::rotationUnits::deg, 100, vex::velocityUnits::pct, true);
+        Scrapper.rotateTo(-180, vex::rotationUnits::deg, 100, vex::velocityUnits::pct, true);
         Scrapper.setTimeout(750, vex::timeUnits::msec);
-        //vex::task::sleep(200);
+        vex::task::sleep(200);
         Scrapper.rotateTo(0, vex::rotationUnits::deg, 100, vex::velocityUnits::pct, false);
         Scrapper.setTimeout(750, vex::timeUnits::msec);
-        startPid(-33, 90, -33, 90);
+        startPid(-28, 90, -28, 90);
         Intake.spin(vex::directionType::fwd, (0), vex::velocityUnits::pct);
 
 
@@ -804,7 +848,7 @@ int ratchetTask(){
         //while(((Gyro.value(vex::analogUnits::range12bit)) - currVal) > -825){
           // vex::task::sleep(10); 
        // }
-        while(((avgGyro() - currVal) < 430)){
+        while(((avgGyro() - currVal) < 480)){
            vex::task::sleep(10); 
         }
         //stop motors with PID
@@ -819,10 +863,9 @@ int ratchetTask(){
         Puncher.rotateTo(900, vex::rotationUnits::deg, 100, vex::velocityUnits::pct, false);
         Puncher.setTimeout(600, vex::timeUnits::msec);
 
-        angleAdjust.rotateTo(60, vex::rotationUnits::deg,100,vex::velocityUnits::pct, false);
-        angleAdjust.setTimeout(600, vex::timeUnits::msec);
+        
 
-        startPid(13.5, 50, 13.5, 50);
+        startPid(8, 50, 8, 50);
         angleAdjust.stop(vex::brakeType::hold);
 
         Scrapper.rotateTo(-430, vex::rotationUnits::deg, 100, vex::velocityUnits::pct, true);
@@ -830,22 +873,36 @@ int ratchetTask(){
 
         Intake.spin(vex::directionType::fwd, (maxSpeed), vex::velocityUnits::pct);
 
-        vex::task::sleep(200);
-        startPid(-11, 60, -11, 60);
+        vex::task::sleep(350);
+
+        Intake.spin(vex::directionType::fwd, (maxSpeed * 0.75), vex::velocityUnits::pct);
+
+        startPid(-13.5, 60, -13.5, 60);
+
+        Scrapper.rotateTo(-560, vex::rotationUnits::deg, 100, vex::velocityUnits::pct, false);
+        Scrapper.setTimeout(750, vex::timeUnits::msec);
 
        // Scrapper.rotateTo(-570, vex::rotationUnits::deg, 100, vex::velocityUnits::pct, false);
       //  Scrapper.setTimeout(750, vex::timeUnits::msec);
 
-        vex::task::sleep(600);
+       //
+
+        startPid(9, 40, 9, 40);
+
+        vex::task::sleep(200);
         Intake.spin(vex::directionType::fwd, (maxSpeed * 0.3), vex::velocityUnits::pct);
         vex::task::sleep(300);
+
+        angleAdjust.rotateTo(145, vex::rotationUnits::deg,100,vex::velocityUnits::pct, true);
+        angleAdjust.setTimeout(600, vex::timeUnits::msec);
+
         //Intake.spin(vex::directionType::fwd, (maxSpeed * 0.5), vex::velocityUnits::pct);
 
        // startPid(10, 50, 10, 50);
-       Intake.rotateFor(-1.5, vex::rotationUnits::rev, (maxSpeed), vex::velocityUnits::pct, true);
+       Intake.rotateFor(-2, vex::rotationUnits::rev, (maxSpeed), vex::velocityUnits::pct, true);
        Intake.setTimeout(1000, vex::timeUnits::msec);
        // Intake.rotateFor(-1, vex::rotationUnits::rev, (maxSpeed * .80), vex::velocityUnits::pct, true);
-        Scrapper.rotateTo(-560, vex::rotationUnits::deg, 100, vex::velocityUnits::pct, false);
+        Scrapper.rotateTo(-430, vex::rotationUnits::deg, 100, vex::velocityUnits::pct, false);
         Scrapper.setTimeout(750, vex::timeUnits::msec);
 
         Puncher.rotateTo(1080, vex::rotationUnits::deg, 100, vex::velocityUnits::pct, true);
@@ -857,9 +914,9 @@ int ratchetTask(){
 //        Scrapper.rotateTo(-350, vex::rotationUnits::deg, 100, vex::velocityUnits::pct, false);
   //      Scrapper.setTimeout(750, vex::timeUnits::msec);
         //get next ball up
-        Intake.rotateFor(5, vex::rotationUnits::rev, (maxSpeed * .80), vex::velocityUnits::pct, false);
+        Intake.rotateFor(3.5, vex::rotationUnits::rev, (maxSpeed * .80), vex::velocityUnits::pct, false);
         //change angle
-        angleAdjust.rotateTo(145, vex::rotationUnits::deg,100,vex::velocityUnits::pct, false);
+        angleAdjust.rotateTo(50, vex::rotationUnits::deg,100,vex::velocityUnits::pct, false);
         angleAdjust.setTimeout(600, vex::timeUnits::msec);
         //give ball a little bit of time
 
@@ -872,13 +929,9 @@ int ratchetTask(){
         angleAdjust.rotateTo(0, vex::rotationUnits::deg,100,vex::velocityUnits::pct, false);
         angleAdjust.setTimeout(600, vex::timeUnits::msec);
 
-        //startPid(8, 100, 8, 100);
-        driveMoveFor(8,100);
-        Scrapper.rotateTo(-300, vex::rotationUnits::deg, 85, vex::velocityUnits::pct, true);
-        Scrapper.setTimeout(750, vex::timeUnits::msec);
-
-
-        //end of auton stuff
+       // startPid(8, 90, 8, 90);
+       // Scrapper.rotateTo(0, vex::rotationUnits::deg, 65, vex::velocityUnits::pct, true);
+      //  Scrapper.setTimeout(750, vex::timeUnits::msec);
 
         Puncher.stop(vex::brakeType::coast);
         Intake.stop(vex::brakeType::coast);
@@ -981,7 +1034,7 @@ int ratchetTask(){
         //while(((Gyro.value(vex::analogUnits::range12bit)) - currVal) > -825){
           // vex::task::sleep(10); 
        // }
-        while(((avgGyro() - currVal) < 875)){
+        while(((avgGyro() - currVal) < 860)){
            vex::task::sleep(10); 
         }
         //stop motors with PID
@@ -1119,7 +1172,7 @@ int ratchetTask(){
         //get next ball up
         Intake.rotateFor(3.5, vex::rotationUnits::rev, (maxSpeed * .80), vex::velocityUnits::pct, false);
         //change angle
-        angleAdjust.rotateTo(20, vex::rotationUnits::deg,100,vex::velocityUnits::pct, false);
+        angleAdjust.rotateTo(50, vex::rotationUnits::deg,100,vex::velocityUnits::pct, false);
         angleAdjust.setTimeout(600, vex::timeUnits::msec);
         //give ball a little bit of time
 
@@ -2223,7 +2276,7 @@ void autonomous( void ) {
 
 
             //motor holds
-            if(!angleTrigger){
+            if(!angleTrigger && !doubleShot){
             if(anglePos == 0)
                 angleAdjust.stop(vex::brakeType::coast);
             
@@ -2266,11 +2319,15 @@ void autonomous( void ) {
                 if(!scrapperPos){
                     Scrapper.rotateTo(-150, vex::rotationUnits::deg, 100, vex::velocityUnits::pct, true);
                     Scrapper.setTimeout(750, vex::timeUnits::msec);
+
+                    scrapperRam = true;
                 }
                 //if scrapper is out (true)
                 else if(scrapperPos){
                     Scrapper.rotateTo(0, vex::rotationUnits::deg, 100, vex::velocityUnits::pct, true);
                     Scrapper.setTimeout(750, vex::timeUnits::msec);
+
+                    scrapperRam = false;
                 }
                 //switch pos cause it moved
                 scrapperPos = !scrapperPos;
@@ -2285,6 +2342,43 @@ void autonomous( void ) {
                 scrapperEnabled = false;
                 }  
     }
+
+    void scrapperRamMove(){
+        if(Controller1.ButtonA.pressing()){
+            scrapperEnabled = true;
+                //wait until released
+                   while(Controller1.ButtonA.pressing()){
+                       vex::task::sleep(100);
+                   }
+
+                //if scrapper is in (false)
+                if(!scrapperRam){
+                    Scrapper.rotateTo(-280, vex::rotationUnits::deg, 100, vex::velocityUnits::pct, true);
+                    Scrapper.setTimeout(750, vex::timeUnits::msec);
+
+                    scrapperPos = true;
+                }
+                //if scrapper is out (true)
+                else if(scrapperRam){
+                    Scrapper.rotateTo(0, vex::rotationUnits::deg, 100, vex::velocityUnits::pct, true);
+                    Scrapper.setTimeout(750, vex::timeUnits::msec);
+
+                    scrapperPos = false;
+                }
+                //switch pos cause it moved
+                scrapperRam = !scrapperRam;
+                //bool used to control motor hold for scrapper
+                if(scrapperRam){
+                    scrapperUp = true;
+                }
+                else if(!scrapperRam){
+                    scrapperUp = false;
+                }
+                
+                scrapperEnabled = false;
+                }  
+    }
+
 
 /*
      void moveWithShooting(){
@@ -2333,6 +2427,8 @@ void liftTaskFunc(){
         
         //toggle
         scrapperMedium();
+
+        scrapperRamMove();
         //moveWithShooting();
     }
 
@@ -2456,6 +2552,7 @@ int liftTask(){
     //if drivetype is true, run shooting mode
     void IntakeControl(void){
 
+        if(!doubleShot){
             if(Controller1.ButtonL2.pressing()){
                 Intake.spin(vex::directionType::fwd, (maxSpeed * 1), vex::velocityUnits::pct);
             }
@@ -2466,6 +2563,7 @@ int liftTask(){
                 Intake.stop(vex::brakeType::coast);
             }
         }
+    }
         
     void scrapperControl(void){ 
         if(!scrapperEnabled){
@@ -2539,3 +2637,5 @@ int main() {
     }    
        
 }   
+
+
