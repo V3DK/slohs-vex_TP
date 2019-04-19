@@ -36,18 +36,18 @@ bool pidRunning = false;
 bool turnRunning;
 
 float pidReqValue = 0; 
-float tReq = 0;
+float tReq;
 
 //max speed for pid to go at
 int pidSpeed = 0;
 int tSpeed = 0;
 
 //constants for control
-float  kp = 0.3;
+float  kp = 0.4;
 //float  ki = 0.0;
-float  kd = 0.3;
+float  kd = 0.4;
 
-float tKp = 0.9;
+float tKp = 1.1;
 float tKd = 3.5;
 
 
@@ -169,9 +169,11 @@ void rightSlew(int rightTarget){
  }
 
 //positive tReq = right turn!
- void startTurn(float tReq, int turSpeed){
+ void startTurn(float tReqi, int turSpeed){
     resetDrive();
-    tReq = (tReq / (4 * math_Pi)) * 360;
+    tReq = (tReqi / (4 * math_Pi)) * 360;
+    Brain.Screen.clearScreen();
+    Brain.Screen.printAt(1, 110, "%0.4f", tReq);
     tSpeed = turSpeed;
     turnRunning = true;
     
@@ -197,7 +199,7 @@ int pidTask(){
      while(true){
 
         if(pidRunning){
-            Brain.Screen.clearScreen();
+            //Brain.Screen.clearScreen();
 
             //read sensor value from Avg func
             pidCurrValue = (rightAvg() + leftAvg()) / 2;
@@ -243,28 +245,27 @@ int pidTask(){
 
 int turnTask(){
     //turning
-    float  tCurr;
-    int    tError;
-    float  tLastError;
-    float  tDeriv;
-    int    tDrive;
+    float  tCurr = 0;
+    int    tError = 0;
+    float  tLastError = 0;
+    float  tDeriv = 0;
+    int    tDrive = 0;
 
 
     //clearEncoders
     resetDrive();
-    tLastError = 0;
 
      while(true){
         //turning pid
         if(turnRunning){
-            Brain.Screen.clearScreen();
+            
 
             //guarentees correct sign - right turn is pos, left is neg
             tCurr = (leftAvg() - rightAvg()) / 2;
-            tCurr = leftAvg();
+            //tCurr = leftAvg();
             tError = tReq - tCurr;
 
-            pidDerivative = tError - tLastError;
+            tDeriv = tError - tLastError;
             tLastError = tError;
 
             tDrive = (tKp * tError) + (tKd * tDeriv);
@@ -274,15 +275,25 @@ int turnTask(){
             else if(tDrive < (-tSpeed))
                 tDrive = (-tSpeed);
 
+            Brain.Screen.printAt(1, 10, "%d", tError);
+            Brain.Screen.printAt(1, 30, "%d", tLastError);
+            Brain.Screen.printAt(1, 50, "%d", tDrive);
+            Brain.Screen.printAt(1, 70, "%0.4f", tReq);
+
+
+           // Brain.Screen.printAt(1, 10, "First");
+
             //stoppping state - if drive power super small, (less than 3) and error is equal to last error, robot is stopped
             if((abs(tDrive) < 1) && ((tLastError == tError) || (tError < 3))){
                 stopTurn();
-            }    
+            }      
+
+           // Brain.Screen.printAt(1, 120, "Third");
             //send to drive motors
-            //moveLeft(tDrive);
-            //moveRight(-tDrive);
-            leftSlew(tDrive);
-            rightSlew(-tDrive);
+            moveLeft(tDrive);
+            moveRight(-tDrive);
+            //leftSlew(tDrive);
+            //rightSlew(-tDrive);
         }
 
         //pid not running
@@ -538,6 +549,17 @@ int ratchetTask(){
         /*                                                                                           */
         /*-------------------------------------------------------------------------------------------*/
     
+
+    void testingAuto(){
+    	Brain.Screen.clearScreen();
+        resetDrive();
+         startPid(10, 70);
+        startTurn(5, 50);
+
+    }
+
+
+
     void threeFlagRed(){
 
         angleAdjust.setStopping(vex::brakeType::hold);
@@ -562,13 +584,13 @@ int ratchetTask(){
         vex::task::sleep(150); 
 
         //slow intake down so ball doesn't get yeet
-        Intake.spin(vex::directionType::fwd, (maxSpeed * 0.4), vex::velocityUnits::pct);
+        Intake.spin(vex::directionType::fwd, (maxSpeed * 0.2), vex::velocityUnits::pct);
                 
         resetDrive();
 
 
         //drive back
-        startPid(-35.5, 75);
+        startPid(-37.5, 75);
         resetDrive();
         //Intake.spin(vex::directionType::fwd, (maxSpeed * 0.3), vex::velocityUnits::pct);
 
@@ -599,14 +621,14 @@ int ratchetTask(){
 
         //turn to face flags with pid
         vex::task::sleep(100);
-        /*        
+            
         currVal = avgGyro();
         FrontLeft.spin(vex::directionType::rev, 40, vex::velocityUnits::pct);
         BackLeft.spin(vex::directionType::rev, 40, vex::velocityUnits::pct);
         BackRight.spin(vex::directionType::fwd, 40, vex::velocityUnits::pct);
         FrontRight.spin(vex::directionType::fwd, 40, vex::velocityUnits::pct);
 
-        while(((avgGyro() - currVal) > -840)){
+        while(((avgGyro() - currVal) > -800)){
            vex::task::sleep(10); 
         }
         //stop motors with PID
@@ -615,10 +637,10 @@ int ratchetTask(){
         //stop motors and put them on coast
         vex::task::sleep(150);
         driveCoast();
-        */
+        
 
         //testing pid turn
-        startTurn(-9.2, 50);
+      //  startTurn(-9.5, 50);
 
         //pull back slipgear just enough to shoot
         Puncher.rotateTo(360, vex::rotationUnits::deg, 100, vex::velocityUnits::pct, true);
@@ -644,9 +666,9 @@ int ratchetTask(){
 
         Intake.spin(vex::directionType::fwd, (-1 * maxSpeed), vex::velocityUnits::pct);
 
-        startTurn(-0.4, 30);
+        startTurn(-0.25, 30);
         vex::task::sleep(100);
-        startPid(32, 90);
+        startPid(37, 90);
        // startPid(31.6, 95, 30, 90);
         //startPid(31, 90, 32.7, 95);
         //vex::task::sleep(200);
@@ -657,15 +679,15 @@ int ratchetTask(){
         vex::task::sleep(200);
         Scrapper.rotateTo(0, vex::rotationUnits::deg, 100, vex::velocityUnits::pct, false);
         Scrapper.setTimeout(750, vex::timeUnits::msec);
-        startPid(-28, 90);
+        startPid(-33, 90);
         Intake.spin(vex::directionType::fwd, (0), vex::velocityUnits::pct);
 
 
         vex::task::sleep(100);
-        startTurn(-5.5, 50);
+        //startTurn(5.5, 50);
 
         //startPid(5.8, 30, -5.8, 30);
-        /*
+        
         currVal = avgGyro();
         FrontLeft.spin(vex::directionType::fwd, 40, vex::velocityUnits::pct);
         BackLeft.spin(vex::directionType::fwd, 40, vex::velocityUnits::pct);
@@ -685,14 +707,14 @@ int ratchetTask(){
         //stop motors and put them on coast
         vex::task::sleep(150);
         driveCoast();
-        */
+        
 
         Puncher.rotateTo(900, vex::rotationUnits::deg, 100, vex::velocityUnits::pct, false);
         Puncher.setTimeout(600, vex::timeUnits::msec);
 
         
 
-        startPid(8, 50);
+        startPid(17, 50);
         angleAdjust.stop(vex::brakeType::hold);
 
         Scrapper.rotateTo(-430, vex::rotationUnits::deg, 100, vex::velocityUnits::pct, true);
@@ -1652,6 +1674,7 @@ void autonomous( void ) {
             //default - 5 flag
             Brain.Screen.printAt(1, 15, "5FlagRed");          
             threeFlagRed();
+            //testingAuto();
         }
         else if(tempVal < 1.25){
             //middle cross
